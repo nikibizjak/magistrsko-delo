@@ -1,0 +1,42 @@
+% select the course title if it exist
+\ifTRACKEXIST
+    \ifTRACKCS
+        \renewcommand{\trackname}{Računalništvo in Informatika}
+    \else
+        \renewcommand{\trackname}{Podatkovne Vede}
+    \fi
+\fi
+
+\ifPROGRAMMM
+    \thispagestyle{empty}
+    \begin{center}
+        {\large\sc Univerza v Ljubljani\\Fakulteta za računalništvo in informatiko\\
+            Fakulteta za elektrotehniko}
+    	   \vskip 10em
+    	   {\authorfont \tauthor \par}
+    	   {\titlefont \ttitle \par}
+        {\vskip 2em \textsc{MAGISTRSKO DELO\\[2mm]
+        MAGISTRSKI ŠTUDIJSKI PROGRAM DRUGE STOPNJE\\MULTIMEDIJA
+        }\par}
+        \vfill\null
+        {\large \textsc{Mentor}: \mysupervisor \par}
+        {\vskip 2em \large Ljubljana, \myyear \par}
+   \end{center}
+\else
+    \thispagestyle{empty}
+	\begin{center}
+            {\large\sc Univerza v Ljubljani\\Fakulteta za računalništvo in informatiko}
+    	   \vskip 10em
+    	   {\authorfont \tauthor \par}
+    	   {\titlefont \ttitle \par}
+        {\vskip 2em \textsc{MAGISTRSKO DELO\\[2mm]
+        MAGISTRSKI ŠTUDIJSKI PROGRAM DRUGE STOPNJE\\RAČUNALNIŠTVO IN INFORMATIKA
+        \ifTRACKEXIST
+            \\Smer: \trackname
+        \fi
+        }\par}
+        \vfill\null
+        {\large \textsc{Mentor}: \mysupervisor \par}
+        {\vskip 2em \large Ljubljana, \myyear \par}
+   \end{center}
+\fi 
