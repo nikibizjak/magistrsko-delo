@@ -1,0 +1,155 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=biber, style=numeric, sorting=nty]{biblatex}
+\addbibresource{bibliografija/bibliography.bib}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{url}
+\usepackage{xcolor}
+
+\topmargin=0cm
+\topskip=0cm
+\textheight=25cm
+\headheight=0cm
+\headsep=0cm
+\oddsidemargin=0cm
+\evensidemargin=0cm
+\textwidth=16cm
+\parindent=0cm
+\parskip=12pt
+
+\renewcommand{\baselinestretch}{1.2}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Izpolni kandidat! %%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{osebni_podatki_objava.tex}
+%%%%%%%%%%%%%%%%%%%%%%%%%% Konec izpolnjevanja %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\Kandidat}{\ImeKandidata~\PriimekKandidata}
+\noindent
+\Kandidat\\
+\NaslovBivalisca \\
+Študijski program: \StudijskiProgram \\
+Vpisna številka: \VpisnaStevilka
+\bigskip
+
+{\bf Komisija za študijske zadeve}\\
+Univerza v Ljubljani, Fakulteta za računalništvo in informatiko\\
+Večna pot 113, 1000 Ljubljana\\
+
+{\Large\bf
+{\centering
+    Vloga za prijavo teme magistrskega dela \\%[2mm]
+\large Kandidat: \Kandidat \\[10mm]}}
+
+
+\Kandidat, študent/-ka magistrskega programa na Fakulteti za računalništvo in informatiko, zaprošam Komisijo za študijske zadeve, da odobri predloženo temo magistrskega dela z naslovom:
+
+%\hfill\begin{minipage}{\dimexpr\textwidth-2cm}
+Slovenski: {\bf \SLONaslov}\\
+Angleški: {\bf \ENGNaslov}
+%\end{minipage}
+
+Tema je bila že potrjena lani in je ponovno vložena: {\bf \textit{NE} }
+
+Izjavljam, da so spodaj navedeni mentorji predlog teme pregledali in odobrili ter da se z oddajo predloga strinjajo.
+
+Magistrsko delo nameravam pisati v slovenščini.
+
+Za mentorja/mentorico predlagam:
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Izpolni kandidat! %%%%%%%%%%%%%%%%%%%%%%%%%%
+\hfill\begin{minipage}{\dimexpr\textwidth-2cm}
+Ime in priimek, naziv: Boštjan Slivnik, doc. dr. \\
+Ustanova: Fakulteta za Računalništvo in Informatiko, Ljubljana \\
+Elektronski naslov: bostjan.slivnik@fri.uni-lj.si
+\end{minipage}
+
+\hfill
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Konec izpolnjevanja %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\bigskip
+
+
+\hfill V Ljubljani, \today.
+%V Ljubljani, dne …………………………
+%
+%Podpis mentorja: \hspace{180px} Podpis kandidata/kandidatke:
+
+
+
+
+\clearpage
+\section*{PREDLOG TEME MAGISTRSKEGA DELA}
+
+\section{Področje magistrskega dela}
+
+slovensko: prevajalniki, funkcijski programski jeziki, nestrog izračun, upravljanje s pomnilnikom \\
+angleško: compilers, functional programming languages, lazy evaluation, memory management
+
+
+\section{Ključne besede}
+
+slovensko: prevajalnik, nestrog izračun, upravljanje s pomnilnikom, avtomatični čistilec pomnilnika, lastništvo objektov \\
+angleško: compiler, lazy evaluation, memory management, garbage collector, ownership model
+
+
+\section{Opis teme magistrskega dela}
+
+\textbf{Pretekle potrditve predložene teme:}\\
+Predložena tema ni bila oddana in potrjena v preteklih letih.
+
+\subsection{Uvod in opis problema}
+
+Pomnilnik je dandanes kljub uvedbi pomnilniške hierarhije še vedno eden izmed najpočasnejših delov računalniške arhitekture. Učinkovito upravljanje s pomnilnikom je torej ključnega pomena za učinkovito izvajanje programov. Upravljanje s pomnilnikom v grobem ločimo na ročno in avtomatično~\cite{jones2023garbage}. Pri ročnem upravljanju s pomnilnikom programski jezik vsebuje konstrukte za dodeljevanje in sproščanje pomnilnika. Odgovornost upravljanja s pomnilnikom leži na programerju, zato je ta metoda podvržena človeški napaki. Pogosti napaki sta puščanje pomnilnika (angl. memory leaking), pri kateri dodeljen pomnilnik ni sproščen, in viseči kazalci (angl. dangling pointers), ki kažejo na že sproščene in zato neveljavne dele pomnilnika~\cite{jones2023garbage}.
+
+Pri avtomatičnem upravljanju s pomnilnikom zna sistem sam dodeljevati in sproščati pomnilnik. Tukaj ločimo posredne in neposredne metode. Ena izmed neposrednih metod je npr. štetje referenc~\cite{collins1960method}, pri kateri za vsak objekt na kopici hranimo metapodatek o številu kazalcev, ki se sklicujejo nanj. V tem primeru moramo ob vsakem spreminjanju referenc zagotavljati še ustrezno posodabljanje števcev, kadar pa število kazalcev pade na nič, objekt izbrišemo iz pomnilnika. Posredne metode, npr. označi in pometi~\cite{mccarthy1960recursive}, ne posodabljajo metapodatkov na pomnilniku ob vsaki spremembi, temveč se izvedejo, le kadar se prekorači velikost kopice. Algoritem pregleda kopico in ugotovi, na katere objekte ne kaže več noben kazalec, ter jih odstrani. Nekateri algoritmi podatke na kopici tudi defragmentirajo in s tem zagotovijo boljšo lokalnost ter s tem boljše predpomnjenje~\cite{fenichel1969lisp}. 
+
+% Avtomatično upravljanje s pomnilnikom delimo na štetje referenc in algoritem označi in pometi\cite{jones1996garbage}.
+
+% Pri avtomatičnem upravljanju s pomnilnikom, programski jezik sam poskrbi za ustrezno čiščenje pomnilnika. Večina modernejših programskih jezikov s pomnilnikom upravlja avtomatično. Nekateri jeziki, kot so npr. Java, C\#, Haskell, za čiščenje uporabljajo avtomatični čistilec pomnilnika (angl. garbage collector). Pri tem se tekom izvajanja programa periodično kliče koda za čiščenje pomnilnika, ki začasno zaustavi izvajanje programa, izvede proceduro čiščenja in nato nadaljuje z izvajanjem. Avtomatično čiščenje pomnilnika sicer rešuje problem puščanja pomnilnika zaradi površnosti programerjev, a zaradi svoje nedeterministične narave ni primerno za časovno kritične računske probleme, saj ni mogoče predvideti kdaj se bo čiščenje pomnilnika izvedlo. Prav tako pa lahko pri določenih algoritmih za čiščenje prihaja do fragmentacije pomnilnika, kjer so podatki razdrobljeni po pomnilniku in s tem otežujejo napovedovanje naslovov (angl. prefetching) v predpomnilniku.
+
+Avtomatično čiščenje pomnilnika pa ima tudi svoje probleme. Štetje referenc v primeru pomnilniških ciklov pušča pomnilnik, metoda označi in pometi pa nedeterministično zaustavi izvajanje glavnega programa med čiščenjem in tako ni primerna za časovno-kritične (angl. real-time) aplikacije. Kot alternativa obem načinom upravljanja s pomnilnikom, sistemski programski jezik Rust implementira model lastništva~\cite{klabnik2023rust}. Med \textit{prevajanjem} zna s posebnimi pravili zagotoviti, da se bo pomnilnik avtomatično sproščal kadar ga ne bomo več potrebovali. To pa zna storiti brez čistilca pomnilnika in brez eksplicitnega dodeljevanja in sproščanja pomnilnika, zato zagotavlja predvidljivo sproščanje pomnilnika.
+
+\subsection{Pregled sorodnih del}
+
+Funkcijski programski jeziki funkcije obravnavajo kot prvorazredne objekte (angl. first-class objects), kar pomeni, da jih lahko uporabljamo kot argumente drugim funkcijam ali pa jih vračamo kot rezultat klicev funkcij. Leni funkcijski programski jeziki idejo še nadgradijo z delno aplikacijo in zakasnitvami~\cite{10.1145/72551.72554}. Taki jeziki uporabljajo nestrogo semantiko, ki deluje na principu prenos po potrebi (angl. call-by-need), pri kateri pri klicu funkcij ne izračunamo vrednosti argumentov, temveč to storimo šele takrat, ko telo funkcije vrednost dejansko potrebuje. 
+
+Ker lahko funkcije v funkcijskih programskih jezikih sprejemamo kot argumente in vračamo kot rezultate, lahko živijo več časa kot funkcija, ki jih je ustvarila, zato jih ne moremo hraniti na skladu, temveč na kopici. Na kopici zakasnitve in funkcije hranimo kot \textit{zaprtja} (angl. closures). Zaradi lenosti med prevajanjem izraze v programu ovijemo v zakasnitve (angl. thunk), tj. funkcije brez argumentov, ki se izračunajo šele ko je to dejansko potrebno. Pri izvajanju se tako na kopici nenehno ustvarjajo in brišejo nova zaprtja, ki imajo navadno zelo kratko življenjsko dobo, zato je nujna učinkovita implementacija dodeljevanja in sproščanja pomnilnika. Haskell za to uporablja \textit{generacijski} avtomatični čistilec pomnilnika~\cite{sansom1993generational, GHC}. Danes vsi večji funkcijski programski jeziki, ki omogočajo leni izračun, uporabljajo avtomatični čistilec pomnilnika~\cite{turner1985miranda, czaplicki2012elm, brus1987clean, syme2017the, sperber2009revised6}.
+
+Lene funkcijske programske jezike najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{peyton1987implementation}. Eden izmed načinov za izvajanje redukcije je abstraktni STG stroj (angl. Spineless Tagless G-machine)~\cite{jones1992implementing}, ki definira in zna izvajati majhen funkcijski programski jezik STG. STG stroj in jezik se uporabljata kot vmesni korak pri prevajanju najpopularnejšega lenega jezika Haskell v prevajalniku GHC (Glasgow Haskell Compiler)~\cite{GHC}.
+
+% TODO: Ali obstajajo še kakšne alternative STG stroju za izvjanje lenih programskih jezikov? Je npr. GRIN~\cite{podlovics2022modern} še preveč v povojih?
+
+Programski jezik Rust za upravljanje s pomnilnikom uvede princip lastništva (angl. ownership model) ~\cite{klabnik2023rust}, pri katerem ima vsak objekt na kopici natančno enega \textit{lastnika}~\cite{Jung, Oxide, StackedBorrows}. Kadar gre spremenljivka, ki si lasti objekt, izven dosega (angl. out of scope), se pomnilnik za objekt sprosti. Rust definira pojem \textit{premika} (angl. move), pri katerem druga spremenljivka prevzame lastništvo (in s tem odgovornost za čiščenje pomnilnika) in \textit{izposoje} (angl. borrow), pri katerem se ustvari (angl. read-only) referenca na objekt, spremenljivka pa \textit{ne} prevzame lastništva. Preverjanje pravilnosti sproščanja pomnilnika se izvaja \textit{med prevajanjem} v posebnem koraku analize izposoj in premikov (angl. borrow checker). Prevajalnik zna v strojno kodo dodati ustrezne ukaze, ki ustrezno sproščajo pomnilnik in tako na predvidljiv, varen in učinkovit način zagotovi upravljanje s pomnilnikom.
+
+Na podlagi principa lastništva in izposoje iz Rusta je na nastal len funkcijski programski jezik Blang~\cite{Kocjan_Turk_2022}. Interpreter jezika zna pomnilnk za ovojnice izrazov in spremenljivk med izvajanjem samodejno sproščati brez uporabe čistilcev, zatakne pa se pri sproščanju funkcij in delnih aplikacij.
+
+\subsection{Predvideni prispevki magistrske naloge}
+
+V magistrskem delu se bomo primarno ukvarjali s STG jezikom. Operacijska semantika tega veleva, da so vsi izrazi v izvorni kodi v pomnilniku predstavljeni kot ovojnice. Jezik vsebuje izraz let, ki na kopici ustvari novo ovojnico, izbirni izraz \texttt{case} pa šele dejansko izračuna njeno vrednost. Jezik STG za čiščenje ovojnic iz kopice uporablja generacijski čistilec pomnilnika~\cite{jones1992implementing, marlow2004making}. 
+
+Cilj magistrske naloge je pripraviti simulator STG stroja, nato pa spremeniti STG jezik tako, da bo namesto avtomatičnega čistilca pomnilnika uporabljal model lastništva po zgledu programskega jezika Rust. Zanimalo nas bo, kakšne posledice to v STG stroj prinese, kakšne omejitve se pri tem pojavijo ter do kakšnih problemov lahko pri tem pride in ali jih je sploh mogoče rešiti brez korenitih spremembe zasnove stroja samega.
+
+\subsection{Metodologija}
+
+% TODO: Ali je potrebno navesti v katerem programskem jeziku bomo napisali simulator?
+
+Za potrebe naše magistrske naloge bomo v poljubnem programskem jeziku implementirali simulator STG stroja. V programskem jeziku STG bomo napisali zbirko programov, s pomočjo katerih bomo testirali uspešnost implementirane metode. Merili bomo količino dodeljenega pomnilnika in količino sproščenega pomnilnika in skušali ugotoviti, ali je ves pomnilnik pravočasno sproščen. Cilj magistrskega dela ni izdelava učinkovite implementacije čiščenja pomnilnika, temveč skušati ugotoviti, kakšne spremembe in analize je potrebno dodati v STG stroj, da bo lahko uporabljal princip lastništva namesto čistilca pomnilnika.   
+
+\subsection{Literatura in viri}
+\label{literatura}
+
+\renewcommand\refname{}
+\vspace{-50px}
+\printbibliography[heading=bibintoc,title={}]
+
+% \bibliographystyle{elsarticle-num} % Iz magistrske
+% \bibliographystyle{slplainurl} % Iz diplomske 
+% \bibliography{./bibliografija/bibliography}
+
+\end{document}
