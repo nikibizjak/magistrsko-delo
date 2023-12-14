@@ -1,0 +1,19 @@
+data List 'a =
+    | Nil
+    | Cons 'a (List 'a)
+    ;;
+
+data Bool =
+    | True
+    | False
+    ;;
+
+data Either 'a 'b =
+    | Left 'a
+    | Right 'b
+    ;;
+
+data Tree 'a =
+    | Leaf 'a
+    | Node (Tree 'a) (Tree 'a)
+    ;;

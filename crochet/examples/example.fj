@@ -1,0 +1,35 @@
+main =
+    2 * 2 + 3 * 1;;
+
+apply f x = f x;;
+
+apply3 f x = f x x x;;
+
+map f xs =
+    case xs of
+    | Nil -> Nil
+    | List head tail -> List (f head) (map f tail) ;;
+
+not b =
+    case b of
+    | True -> False
+    | _ -> True
+    ;;
+
+head xs =
+    case xs of
+    | Nil -> Nothing
+    | List head tail -> Just head
+    ;;
+
+isEven n =
+    case n of
+    | 0 -> True
+    | _ -> isOdd (n - 1)
+    ;;
+
+isOdd n =
+    case n of
+    | 1 -> True
+    | _ -> isEven (n - 1)
+    ;;

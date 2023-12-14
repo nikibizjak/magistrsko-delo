@@ -1,0 +1,8 @@
+value =
+    let
+        a = 12;
+        b = 8;
+        c = a + b
+    in
+        a + b
+    ;;

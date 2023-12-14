@@ -1,0 +1,23 @@
+cabal-version:      2.4
+name:               crochet
+version:            0.1.0.0
+synopsis:           A compiler for a lazy functional programming language.
+author:             Niki Bizjak
+maintainer:         bizjak.niki@gmail.com
+
+executable crochet
+    main-is:          Main.hs
+    other-modules:    Language.Parser
+                      Language.Language
+                      Language.Printer
+                      Language.Converter
+                      Language.Optimizer
+                      Stg.Stg
+                      Stg.Interpreter
+                      Exception
+    build-depends:
+        base == 4.17.2.0,
+        directory == 1.3.7.1,
+        containers == 0.6.7,
+    hs-source-dirs:   app
+    default-language: Haskell2010
