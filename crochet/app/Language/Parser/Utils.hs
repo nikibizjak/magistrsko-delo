@@ -93,6 +93,15 @@ spaces = many space >> return ()
 spaces1 :: Parser ()
 spaces1 = many1 space >> return ()
 
+isExactlySpace :: Char -> Bool
+isExactlySpace c = isSpace c && not (isLineSeparator c)
+
+exactlySpace :: Parser Char
+exactlySpace = satisfy isExactlySpace character
+
+exactlySpaces :: Parser ()
+exactlySpaces = many exactlySpace >> return ()
+
 grouping :: Parser b -> Parser b
 grouping parser =
     exactly '(' >> spaces >> parser >>= \subexpression ->

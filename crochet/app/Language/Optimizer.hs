@@ -66,6 +66,7 @@ removeUnnecessaryBindsDeclaration declaration =
             ValueDeclaration name parameters (removeUnnecessaryBindsExpression expression)
         -- TODO
         TypeDeclaration a b c -> TypeDeclaration a b c
+        TypeHintDeclaration a b -> TypeHintDeclaration a b
 
 removeUnnecessaryBindsExpression :: Expression -> Expression
 removeUnnecessaryBindsExpression expression =

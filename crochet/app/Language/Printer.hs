@@ -6,7 +6,9 @@ import Language.Language
       Constructor,
       Declaration(..),
       Expression(..),
-      Type(..) )
+      Type(..),
+      TypeHint(..) )
+import Control.Arrow (Arrow(second))
 
 -- PRINTING FUNCTIONS
 unseparators :: [Char] -> [String] -> String
@@ -62,10 +64,12 @@ instance Show Declaration where
                 else name ++ " = " ++ show body
         TypeDeclaration name parameters t ->
             let
-                parametersClean = if null parameters then "" else " " ++ parametersString 
+                parametersClean = if null parameters then "" else " " ++ parametersString
                 parametersString = unwords (map show parameters)
             in
                 "type " ++ name ++ parametersClean ++ " = " ++ show t
+        TypeHintDeclaration name typeHint ->
+            name ++ " :: " ++ show typeHint
 
 showConstructor :: Constructor -> String
 showConstructor (name, t) =
@@ -80,10 +84,32 @@ instance Show Type where
         IntegerType -> "int"
         NamedType name parameters ->
             let
-                parametersClean = if null parameters then "" else " " ++ parametersString 
+                parametersClean = if null parameters then "" else " " ++ parametersString
                 parametersString = unwords (map show parameters)
             in
                 name ++ parametersClean
         ParametricType name -> '\'' : name
         SumType types -> unseparators " | " (map showConstructor types)
         ProductType types -> unseparators " * " (map show types)
+
+instance Show TypeHint where
+    show t = case t of
+        IntegerTypeHint -> "int"
+        ParametricTypeHint name -> '\'' : name
+        NamedTypeHint name parameters ->
+            let
+                showParameter parameter =
+                    case parameter of
+                        NamedTypeHint _ _ -> '(' : show parameter ++ ")"
+                        FunctionTypeHint _ _ -> '(' : show parameter ++ ")"
+                        _ -> show parameter
+            in
+                name ++ " " ++ unwords (map showParameter parameters)
+        FunctionTypeHint first second ->
+            let
+                wrapFunctionTypeHint hint =
+                    case hint of
+                        FunctionTypeHint _ _ -> '(' : show hint ++ ")"
+                        _ -> show hint
+            in
+                wrapFunctionTypeHint first ++ " -> " ++ show second

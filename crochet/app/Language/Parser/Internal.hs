@@ -14,7 +14,8 @@ import Language.Language
       Declaration(..),
       Expression(..),
       Program,
-      Type(..) )
+      Type(..),
+      TypeHint(..) )
 
 symbolToOperator symbol =
     case symbol of
@@ -209,11 +210,76 @@ typeDeclaration =
     many1 constructor >>= \constructors ->
     return (TypeDeclaration name parameters (SumType constructors))
 
+integerTypeHint :: Parser TypeHint
+integerTypeHint =
+    word "int" >> exactlySpaces >> return IntegerTypeHint
+
+parametricTypeHint :: Parser TypeHint
+parametricTypeHint =
+    exactly '\'' >> identifier >>= \name ->
+    exactlySpaces >> return (ParametricTypeHint name)
+
+namedTypeHint :: Parser TypeHint
+namedTypeHint =
+    identifier >>= \name ->
+    many (exactlySpaces >> typeHint0) >>= \parameters ->
+    exactlySpaces >>
+    return (NamedTypeHint name parameters)
+
+groupingOnlySpaces :: Parser b -> Parser b
+groupingOnlySpaces parser =
+    exactly '(' >> exactlySpaces >> parser >>= \subexpression ->
+        exactlySpaces >> exactly ')' >> return subexpression
+
+typeHint0 :: Parser TypeHint
+typeHint0 =
+    oneOf [
+        integerTypeHint,
+        namedTypeHint,
+        parametricTypeHint,
+        groupingOnlySpaces typeHint
+    ]
+
+functionTypeHint :: Parser TypeHint
+functionTypeHint =
+    typeHint0 >>= \first ->
+    exactlySpaces >>
+    many1 (
+        word "->" >>
+        exactlySpaces >>
+        typeHint >>= \hint ->
+        exactlySpaces >> return hint
+    ) >>= \others ->
+        return (foldl FunctionTypeHint first others)
+
+typeHint :: Parser TypeHint
+typeHint =
+    oneOf [
+        functionTypeHint,
+        typeHint0
+    ]
+
+typeHintDeclaration :: Parser Declaration
+typeHintDeclaration =
+    identifier >>= \name ->
+    exactlySpaces >> word "::" >> exactlySpaces >> typeHint >>= \hint ->
+    exactlySpaces >> lines >> exactlySpaces >>
+    return (TypeHintDeclaration name hint)
+
+twoSemicolon :: Parser b -> Parser b
+twoSemicolon parser =
+    parser >>= \result ->
+    spaces >> word ";;" >> spaces >>
+    return result
+
 declaration :: Parser Declaration
-declaration = oneOf [ typeDeclaration, valueDeclaration ]
+declaration = spaces >> oneOf [
+    twoSemicolon typeDeclaration ,
+    twoSemicolon valueDeclaration,
+    typeHintDeclaration ]
 
 program :: Parser Program
-program = many (declaration >>= \decl -> spaces >> word ";;" >> spaces >> return decl)
+program = many declaration
 
 parse :: String -> Program
 parse input = case program input of

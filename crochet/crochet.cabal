@@ -8,6 +8,8 @@ maintainer:         bizjak.niki@gmail.com
 executable crochet
     main-is:          Main.hs
     other-modules:    Language.Parser
+                      Language.Parser.Utils
+                      Language.Parser.Internal
                       Language.Language
                       Language.Printer
                       Language.Converter

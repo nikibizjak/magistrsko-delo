@@ -6,6 +6,7 @@ module Language.Language (
     Program(..),
     Type(..),
     Constructor,
+    TypeHint(..),
 ) where
 
 type Program = [ Declaration ]
@@ -13,6 +14,13 @@ type Program = [ Declaration ]
 data Declaration
     = TypeDeclaration String [Type] Type
     | ValueDeclaration String [String] Expression
+    | TypeHintDeclaration String TypeHint
+
+data TypeHint
+    = IntegerTypeHint
+    | ParametricTypeHint String
+    | NamedTypeHint String [TypeHint]
+    | FunctionTypeHint TypeHint TypeHint
 
 data Type
     = IntegerType
