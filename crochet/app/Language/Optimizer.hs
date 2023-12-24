@@ -16,8 +16,8 @@ freeVariables expression =
             Set.union (Set.union (freeVariables condition) (freeVariables thenExpression)) (freeVariables elseExpression)
         Application function argument ->
             Set.union (freeVariables function) (freeVariables argument)
-        Lambda parameters body ->
-            deleteMore parameters (freeVariables body)
+        Lambda parameter body ->
+            deleteMore [parameter] (freeVariables body)
         LetIn binds body ->
             let
                 definedNames = map fst binds

@@ -98,8 +98,8 @@ ifThenElse =
 lambda :: Parser Expression
 lambda =
     word "fun" >> many (spaces1 >> identifier) >>= \parameters ->
-        spaces1 >> word "->" >> spaces1 >> expression >>= \body ->
-            return (Lambda parameters body)
+    spaces1 >> word "->" >> spaces1 >> expression >>= \body ->
+    return (foldr Lambda body parameters)
 
 bind :: Parser (String, Expression)
 bind =

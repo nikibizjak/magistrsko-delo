@@ -35,8 +35,8 @@ instance Show Expression where
         "(" ++ show left ++ " " ++ show operator ++ " " ++ show right ++ ")"
     IfThenElse condition thenBranch elseBranch ->
         "if " ++ show condition ++ " then " ++ show thenBranch ++ " else " ++ show elseBranch
-    Lambda parameters body ->
-        "fun " ++ show parameters ++ " -> " ++ show body
+    Lambda parameter body ->
+        "fun " ++ show parameter ++ " -> " ++ show body
     Application left right -> "(" ++ show left ++ " " ++ show right ++ ")"
     LetIn binds body ->
         "let " ++ uncommas (map (\(name, value) -> name ++ " = " ++ show value) binds) ++ " in " ++ show body

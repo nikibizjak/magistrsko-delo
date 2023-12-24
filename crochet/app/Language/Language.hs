@@ -37,7 +37,7 @@ data Expression
     | Binary BinaryOperator Expression Expression
     | Application Expression Expression
     | IfThenElse Expression Expression Expression
-    | Lambda [String] Expression
+    | Lambda String Expression
     | LetIn [(String, Expression)] Expression
     | LetRec [(String, Expression)] Expression
     | CaseOf Expression [Alternative]
