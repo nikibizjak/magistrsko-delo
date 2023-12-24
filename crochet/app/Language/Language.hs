@@ -13,7 +13,7 @@ type Program = [ Declaration ]
 
 data Declaration
     = TypeDeclaration String [Type] Type
-    | ValueDeclaration String [String] Expression
+    | ValueDeclaration String Expression
     | TypeHintDeclaration String TypeHint
 
 data TypeHint

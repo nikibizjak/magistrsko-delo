@@ -10,8 +10,8 @@ toStg = mapMaybe declarationToStg
 declarationToStg :: Language.Declaration -> Maybe Stg.Binding
 declarationToStg declaration =
     case declaration of
-        Language.ValueDeclaration name parameters body ->
-            Just (name, Stg.Lambda [] Stg.Updatable parameters (expressionToStg body))
+        Language.ValueDeclaration name body ->
+            Just (name, Stg.Lambda [] Stg.Updatable [] (expressionToStg body))
         -- TODO: Translate type declaration into STG.
         Language.TypeDeclaration _ _ _ -> Nothing
 

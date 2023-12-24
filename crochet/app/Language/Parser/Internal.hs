@@ -173,7 +173,7 @@ valueDeclaration =
     identifier >>= \name ->
     spaces1 >> arguments >>= \args ->
     spaces >> exactly '=' >> spaces >> expression >>= \body ->
-    return (ValueDeclaration name args body)
+    return (ValueDeclaration name (foldr Lambda body args))
 
 parametricType :: Parser Type
 parametricType =

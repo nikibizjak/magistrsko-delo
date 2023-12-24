@@ -58,10 +58,8 @@ instance Show Alternative where
 
 instance Show Declaration where
     show declaration = case declaration of
-        ValueDeclaration name arguments body ->
-            if not (null arguments)
-                then name ++ " " ++ unwords arguments ++ " = " ++ show body
-                else name ++ " = " ++ show body
+        ValueDeclaration name body ->
+            name ++ " = " ++ show body
         TypeDeclaration name parameters t ->
             let
                 parametersClean = if null parameters then "" else " " ++ parametersString

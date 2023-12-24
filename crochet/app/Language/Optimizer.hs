@@ -62,8 +62,8 @@ removeUnnecessaryBinds = map removeUnnecessaryBindsDeclaration
 removeUnnecessaryBindsDeclaration :: Declaration -> Declaration
 removeUnnecessaryBindsDeclaration declaration =
     case declaration of
-        ValueDeclaration name parameters expression ->
-            ValueDeclaration name parameters (removeUnnecessaryBindsExpression expression)
+        ValueDeclaration name expression ->
+            ValueDeclaration name (removeUnnecessaryBindsExpression expression)
         -- TODO
         TypeDeclaration a b c -> TypeDeclaration a b c
         TypeHintDeclaration a b -> TypeHintDeclaration a b
