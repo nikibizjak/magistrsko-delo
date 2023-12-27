@@ -4,13 +4,15 @@ import System.Directory.Internal.Prelude ( getArgs )
 import Language.Language ( Expression, Program )
 import Language.Parser ( parse, parseExpression )
 import Language.Printer
-import Language.Converter ( toStg )
-import Stg.Stg (prettify)
-import Language.Optimizer ( removeUnnecessaryBinds, freeVariables )
+import Language.TypeChecker ( infer )
 
 execute contents =
-    removeUnnecessaryBinds $
-    parse contents
+    let
+        abstractSyntaxTree = parse contents
+        --result = abstractSyntaxTree
+        result = infer abstractSyntaxTree
+        -- result = evaluate abstractSyntaxTree
+    in result
 
 main :: IO ()
 main = do
