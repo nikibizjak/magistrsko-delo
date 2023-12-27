@@ -104,8 +104,9 @@ lambda =
 bind :: Parser (String, Expression)
 bind =
     identifier >>= \name ->
-    spaces >> exactly '=' >> spaces >> expression >>= \value ->
-    return (name, value)
+    spaces1 >> arguments >>= \args ->
+    spaces >> exactly '=' >> spaces >> expression >>= \body ->
+    return (name, foldr Lambda body args)
 
 binds :: Parser [(String, Expression)]
 binds = bind >>= \first ->
