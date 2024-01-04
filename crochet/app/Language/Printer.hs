@@ -6,7 +6,7 @@ import Language.Language
       Constructor,
       Declaration(..),
       Expression(..),
-      Type(..),
+      TypeDefinition(..),
       TypeHint(..) )
 import Control.Arrow (Arrow(second))
 
@@ -77,18 +77,18 @@ showConstructor (name, t) =
     in
         name ++ valueClean
 
-instance Show Type where
+instance Show TypeDefinition where
     show t = case t of
-        IntegerType -> "int"
-        NamedType name parameters ->
-            let
-                parametersClean = if null parameters then "" else " " ++ parametersString
-                parametersString = unwords (map show parameters)
-            in
-                name ++ parametersClean
-        ParametricType name -> '\'' : name
-        SumType types -> unseparators " | " (map showConstructor types)
-        ProductType types -> unseparators " * " (map show types)
+        IntegerTypeDefinition -> "int"
+        -- NamedType name parameters ->
+        --     let
+        --         parametersClean = if null parameters then "" else " " ++ parametersString
+        --         parametersString = unwords (map show parameters)
+        --     in
+        --         name ++ parametersClean
+        ParametricTypeDefinition name -> '\'' : name
+        -- SumType types -> unseparators " | " (map showConstructor types)
+        -- ProductType types -> unseparators " * " (map show types)
 
 instance Show TypeHint where
     show t = case t of

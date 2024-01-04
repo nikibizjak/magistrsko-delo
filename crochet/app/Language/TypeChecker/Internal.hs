@@ -1,116 +1,116 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Use second" #-}
 module Language.TypeChecker.Internal where
 
 import Control.Monad.State
 import Control.Exception ( throw )
 import Data.Maybe
 import Exception ( CompilerException(..) )
-import Language.Language ( Declaration(..), Expression(..) )
+import Language.Language ( Declaration(..), Expression(..), Alternative (..), TypeDefinition(..), isTypeDeclaration, isValueDeclaration )
 import Control.Monad (foldM)
+import Language.TypeChecker.Types
+import Language.TypeChecker.Unify ( substitute, unify )
 
-data LanguageType
-    = IntegerType
-    | TypeVariable Int
-    | FunctionType LanguageType LanguageType
-    deriving Eq
-
-typeVariableNames :: [String]
-typeVariableNames = [replicate cnt v | cnt <- [1..], v <- ['a'..'z']]
-
-instance Show LanguageType where
-    show ty = case ty of
-        IntegerType -> "int"
-        TypeVariable value -> typeVariableNames !! value
-        FunctionType left right ->
-            case left of
-                FunctionType _ _ -> "(" ++ show left ++ ") -> " ++ show right
-                _ -> show left ++ " -> " ++ show right
 
 -- Generate a new unique type variable. 
-fresh :: State Int LanguageType
+fresh :: State Int Type
 fresh = do
     n <- get
     put (n + 1)
     return (TypeVariable n)
 
-substitute :: [(LanguageType, LanguageType)] -> LanguageType -> LanguageType
-substitute substitution typ =
+resolve :: [(String, Type)] -> TypeDefinition -> Type
+resolve context typ =
     case typ of
-        TypeVariable _ ->
-            Data.Maybe.fromMaybe typ (lookup typ substitution)
-        IntegerType -> IntegerType
-        FunctionType left right ->
-            FunctionType (substitute substitution left) (substitute substitution right)
+        IntegerTypeDefinition -> integer
+        ParametricTypeDefinition name ->
+            case lookup name context of
+                Nothing -> throw $ TypeCheckException $ "Unknown type variable " ++ name ++ "."
+                Just value -> value
+        NamedType name parameters ->
+            TypeFunction name (map (resolve context) parameters)
 
-composeSubstitution :: [(LanguageType, LanguageType)] -> [(LanguageType, LanguageType)] -> [(LanguageType, LanguageType)]
-composeSubstitution first second =
-    first ++ map (\(from, to) -> (from, substitute first to)) second
+generateConstructorFunctions :: Declaration -> State Int [(String, Type)]
+generateConstructorFunctions (TypeDeclaration name parameters constructors) = do
+    -- data List 'a = ...
 
-substituteEquations :: [(LanguageType, LanguageType)] -> [(LanguageType, LanguageType)] -> [(LanguageType, LanguageType)]
-substituteEquations substitution =
-    map (\(a, b) -> (substitute substitution a, substitute substitution b))
+    -- 1. context = [ 'a -> alpha ]
+    context <- mapM (\parameter -> do
+            alpha <- fresh
+            return (parameter, alpha)) parameters
 
-freeTypeVariables :: LanguageType -> [Int]
-freeTypeVariables typ =
-    case typ of
-        IntegerType -> []
-        TypeVariable v -> [ v ]
-        FunctionType left right ->
-            freeTypeVariables left ++ freeTypeVariables right
+    let parameterTypes = map snd context
 
-isBound :: Int -> LanguageType -> Bool
-isBound typeVariable ty =
-    typeVariable `notElem` freeTypeVariables ty
+    let pt = map (\(TypeVariable i) -> i) parameterTypes
+    let quantified items = foldr Quantifier items pt
 
-unify :: [(LanguageType, LanguageType)] -> [(LanguageType, LanguageType)]
-unify equations =
-    case equations of
-        [] -> []
-        (FunctionType a b, FunctionType a' b') : rest ->
-            unify ((a, a') : (b, b') : rest)
-        (TypeVariable v1, ty) : rest | isBound v1 ty ->
-            let substitution = unify (substituteEquations [ (TypeVariable v1, ty) ] equations)
-            in composeSubstitution [(TypeVariable v1, substitute substitution ty)] substitution
-        (ty, TypeVariable v1) : rest | isBound v1 ty ->
-            let substitution = unify (substituteEquations [ (TypeVariable v1, ty) ] equations)
-            in composeSubstitution [(TypeVariable v1, substitute substitution ty)] substitution
-        (first, second) : rest | first == second -> unify rest
-        (first, second) : _ ->
-            throw $ TypeCheckException $ "Types '" ++ show first ++ "' and '" ++ show second ++ "' can't be unified."
+    let resolveConstructorTypes (name, constructorParameters) = (name, map (resolve context) constructorParameters)
+    let resolvedConstructors = map resolveConstructorTypes constructors
 
--- infer :: [Declaration] -> [([(String, LanguageType)], [(LanguageType, LanguageType)])]
-infer program =
-    let
-        (names, equations) = evalState (inferDeclarations program) 0
-        substitution = unify equations
-    in
-        --let (typ, equations) = evalState (inferExpression [] expression) 0
-        --in substitute (unify equations) typ
-        map (\(name, typ) -> (name, substitute substitution typ)) names
+    -- Type of the return result
+    let result = TypeFunction name parameterTypes
 
-inferDeclarations :: [Declaration] -> State Int ([(String, LanguageType)], [(LanguageType, LanguageType)])
-inferDeclarations = foldM (\(types, equations) declaration -> do
-    (inferredType, inferredEquations) <- inferDeclaration declaration
+    mapM (\(constructorName, constructorParameters) -> do
+        return (constructorName, quantified $ foldr arrow result constructorParameters)
+        ) resolvedConstructors
+
+-- generateConstructorFunctionsAll :: [Declaration] -> State Int [(String, Type)]
+generateConstructorFunctionsAll :: [Declaration] -> State Int [(String, Type)]
+generateConstructorFunctionsAll typeDeclarations = do
+    foldM (\acc x -> do
+        newItems <- generateConstructorFunctions x
+        return $ newItems ++ acc) [] typeDeclarations
+
+inferDeclarations :: Context -> [Declaration] -> State Int ([(String, Type)], [(Type, Type)])
+inferDeclarations context = foldM (\(types, equations) declaration -> do
+    (inferredType, inferredEquations) <- inferDeclaration context declaration
     return (inferredType : types, inferredEquations ++ equations)
     ) ([], [])
 
-inferDeclaration :: Declaration -> State Int ((String, LanguageType), [(LanguageType, LanguageType)])
-inferDeclaration declaration = do
+-- inferDeclaration :: Declaration -> State Int ((String, LanguageType), [(LanguageType, LanguageType)])
+inferDeclaration context declaration = do
     case declaration of
         ValueDeclaration name expression -> do
-            (inferredType, inferredEquations) <- inferExpression [] expression
+            (inferredType, inferredEquations) <- inferExpression context expression
             return ((name, inferredType), inferredEquations)
         _ -> throw NotImplementedException
 
-inferProgram :: [Declaration] -> State Int (LanguageType, [(LanguageType, LanguageType)])
-inferProgram program = do
-    case program of
-        [] -> return (IntegerType, [(IntegerType, IntegerType)])
-        (ValueDeclaration name expression) : rest ->
-            inferExpression [] expression >> inferProgram rest
+inferStateful program = do
+    
+    let typeDeclarations = filter isTypeDeclaration program
+        valueDeclarations = filter isValueDeclaration program
 
-inferExpression :: [(String, LanguageType)] -> Expression -> State Int (LanguageType, [(LanguageType, LanguageType)])
+    -- CONSTRUCTORS FOR USER DEFINED TYPES
+    -- For user defined types like the following
+    --
+    -- data Tree 'a = | Leaf 'a | Branch (Tree 'a) (Tree 'a) ;;
+    --
+    -- we need to generate types for constructors. Each type is a function
+    -- that accepts arguments and returns the user defined type.
+    --
+    -- Leaf :: 'a -> Tree 'a
+    -- Branch :: (Tree 'a) -> (Tree 'a) -> (Tree 'a)
+    constructors <- generateConstructorFunctionsAll typeDeclarations
+    
+    -- TYPES FOR FUNCTIONS DEFINED AT TOP-LEVEL
+    topLevelFunctions <- mapM (\(ValueDeclaration name _) -> do
+        alpha <- fresh
+        return (name, alpha)) valueDeclarations
 
-inferExpression context (Integer _) = return (IntegerType, [])
+    let context = constructors
+
+    (names, equations) <- inferDeclarations context valueDeclarations
+    let substitution = unify equations
+
+    return $ (map (\(name, typ) -> (name, substitute substitution typ)) names, equations)
+
+infer program =
+    evalState (inferStateful program) 0
+
+
+inferExpression :: Context -> Expression -> State Int (Type, [(Type, Type)])
+inferExpression context (Integer _) = return (integer, [])
 
 inferExpression context (Variable name) =
     case lookup name context of
@@ -120,18 +120,18 @@ inferExpression context (Variable name) =
 inferExpression context (Binary _ left right) = do
     (typeLeft, equationsLeft) <- inferExpression context left
     (typeRight, equationsRight) <- inferExpression context right
-    return (IntegerType, (typeLeft, IntegerType) : (typeRight, IntegerType) : equationsLeft ++ equationsRight)
+    return (integer, (typeLeft, integer) : (typeRight, integer) : equationsLeft ++ equationsRight)
 
 inferExpression context (Lambda parameter expression) = do
     alpha <- fresh
     (ty, equations) <- inferExpression ((parameter, alpha) : context) expression
-    return (FunctionType alpha ty, equations)
+    return (arrow alpha ty, equations)
 
 inferExpression context (Application left right) = do
     alpha <- fresh
     (typeLeft, equationsLeft) <- inferExpression context left
     (typeRight, equationsRight) <- inferExpression context right
-    return (alpha, (typeLeft, FunctionType typeRight alpha) : equationsLeft ++ equationsRight)
+    return (alpha, (typeLeft, arrow typeRight alpha) : equationsLeft ++ equationsRight)
 
 -- TODO: Check if this is actually correct, we might have implemented type
 -- inference for the letrec instead.
@@ -139,10 +139,10 @@ inferExpression context (LetIn binds body) = do
     typesBinds <- mapM (\(name, expression) -> do
         alpha <- fresh
         return (name, alpha, expression)) binds
-    
+
     let types = map (\(name, alpha, _) -> (name, alpha)) typesBinds
     let context' = types ++ context
-    
+
     equationsBinds <- foldM (\acc (name, alpha, expression) -> do
         (typeExpression, equationsExpression) <- inferExpression context' expression
         return ((alpha, typeExpression) : equationsExpression ++ acc)
@@ -155,10 +155,10 @@ inferExpression context (LetRec binds body) = do
     typesBinds <- mapM (\(name, expression) -> do
         alpha <- fresh
         return (name, alpha, expression)) binds
-    
+
     let types = map (\(name, alpha, _) -> (name, alpha)) typesBinds
     let context' = types ++ context
-    
+
     equationsBinds <- foldM (\acc (name, alpha, expression) -> do
         (typeExpression, equationsExpression) <- inferExpression context' expression
         return ((alpha, typeExpression) : equationsExpression ++ acc)
@@ -171,4 +171,17 @@ inferExpression context (IfThenElse condition thenBranch elseBranch) =
     throw NotImplementedException
 
 inferExpression context (CaseOf expression alternatives) =
-    throw NotImplementedException
+    -- Types of all alternative's bodies must match
+    let
+        body alternative =
+            case alternative of
+                AlgebraicAlternative constructor variables body -> body
+                PrimitiveAlternative value body -> body
+                NamedDefaultAlternative variable body -> body
+                DefaultAlternative body -> body
+
+        bodyExpressions = map body alternatives
+    in
+        throw NotImplementedException
+
+-- The last one

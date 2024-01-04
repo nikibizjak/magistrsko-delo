@@ -14,6 +14,8 @@ executable crochet
                       Language.Printer
                       Language.TypeChecker
                       Language.TypeChecker.Internal
+                      Language.TypeChecker.Unify
+                      Language.TypeChecker.Types
                       Language.Converter
                       Language.Optimizer
                       Language.Interpreter

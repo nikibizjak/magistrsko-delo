@@ -4,15 +4,21 @@ module Language.Language (
     Alternative(..),
     Declaration(..),
     Program(..),
-    Type(..),
-    Constructor,
+    TypeDefinition(..),
     TypeHint(..),
+    Constructor,
+    isValueDeclaration,
+    isTypeDeclaration,
+    isTypeHintDeclaration,
 ) where
 
 type Program = [ Declaration ]
 
+type Constructor = (String, [TypeDefinition])
+
 data Declaration
-    = TypeDeclaration String [Type] Type
+    -- = TypeDeclaration String [Type] Type
+    = TypeDeclaration String [String] [Constructor]
     | ValueDeclaration String Expression
     | TypeHintDeclaration String TypeHint
 
@@ -22,14 +28,10 @@ data TypeHint
     | NamedTypeHint String [TypeHint]
     | FunctionTypeHint TypeHint TypeHint
 
-data Type
-    = IntegerType
-    | NamedType String [Type]
-    | ParametricType String
-    | SumType [(String, Type)]
-    | ProductType [Type]
-
-type Constructor = (String, Type)
+data TypeDefinition
+    = IntegerTypeDefinition
+    | ParametricTypeDefinition String
+    | NamedType String [TypeDefinition]
 
 data Expression
     = Integer Int
@@ -54,3 +56,22 @@ data Alternative
     | PrimitiveAlternative Int Expression
     | NamedDefaultAlternative String Expression
     | DefaultAlternative Expression
+
+-- Utility functions
+isValueDeclaration :: Declaration -> Bool
+isValueDeclaration declaration =
+    case declaration of
+        ValueDeclaration {} -> True
+        _ -> False
+        
+isTypeDeclaration :: Declaration -> Bool
+isTypeDeclaration declaration =
+    case declaration of
+        TypeDeclaration {} -> True
+        _ -> False
+
+isTypeHintDeclaration :: Declaration -> Bool
+isTypeHintDeclaration declaration =
+    case declaration of
+        TypeHintDeclaration {} -> True
+        _ -> False

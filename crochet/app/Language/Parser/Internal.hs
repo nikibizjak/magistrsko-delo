@@ -10,11 +10,11 @@ import Control.Exception ( throw )
 import Language.Language
     ( Alternative(..),
       BinaryOperator(Modulo, Add, Subtract, Multiply, Divide),
-      Constructor,
       Declaration(..),
       Expression(..),
       Program,
-      Type(..),
+      TypeDefinition(..),
+      Constructor,
       TypeHint(..) )
 
 symbolToOperator symbol =
@@ -176,40 +176,66 @@ valueDeclaration =
     spaces >> exactly '=' >> spaces >> expression >>= \body ->
     return (ValueDeclaration name (foldr Lambda body args))
 
-parametricType :: Parser Type
+parametricType :: Parser TypeDefinition
 parametricType =
     exactly '\'' >> identifier >>= \name ->
-    return (ParametricType name)
+    return (ParametricTypeDefinition name)
 
-namedType :: Parser Type
+namedType :: Parser TypeDefinition
 namedType =
     identifier >>= \name ->
-    many (spaces1 >> parametricType) >>= \parameters ->
+    many (spaces1 >> parseType) >>= \parameters ->
     return (NamedType name parameters)
 
-parseType :: Parser Type
-parseType =
+arrow :: TypeDefinition -> TypeDefinition -> TypeDefinition
+arrow first second =
+    NamedType "arrow" [first, second]
+
+functionType :: Parser TypeDefinition
+functionType =
+    parseType0 >>= \first ->
+    spaces >>
+    many1 (
+        word "->" >>
+        spaces >>
+        parseType >>= \typ ->
+        spaces >> return typ
+    ) >>= \others ->
+        return (foldl arrow first others)
+
+parseType0 :: Parser TypeDefinition
+parseType0 =
     oneOf [
-        word "int" >> return IntegerType,
+        word "int" >> return IntegerTypeDefinition,
         namedType,
         parametricType,
         grouping parseType
     ] >>= \t ->
     spaces >> return t
 
+parseType =
+    oneOf [
+        functionType,
+        parseType0
+    ]
+
 constructor :: Parser Constructor
 constructor =
     exactly '|' >> spaces >> identifier >>= \name ->
     spaces >> many parseType >>= \types ->
-    return (name, ProductType types)
+    return (name, types)
+
+typeParameter :: Parser String
+typeParameter =
+    exactly '\'' >> identifier
 
 typeDeclaration :: Parser Declaration
 typeDeclaration =
     word "data" >> spaces1 >> identifier >>= \name ->
-    many (spaces1 >> parametricType) >>= \parameters ->
+    many (spaces1 >> typeParameter) >>= \parameters ->
     spaces >> exactly '=' >> spaces >>
     many1 constructor >>= \constructors ->
-    return (TypeDeclaration name parameters (SumType constructors))
+    return (TypeDeclaration name parameters constructors)
 
 integerTypeHint :: Parser TypeHint
 integerTypeHint =
