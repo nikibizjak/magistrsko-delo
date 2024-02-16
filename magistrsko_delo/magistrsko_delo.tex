@@ -62,21 +62,15 @@
 %================================================================
 \input{style/thesis_style}
 
-%----------------------------------------------------------------
-% |||||||||||||||||||||| USTREZNO POPRAVI |||||||||||||||||||||||
-% |||||||||||||||||||||| EDIT ACCORDINGLY |||||||||||||||||||||||
-%----------------------------------------------------------------
 \newcommand{\ttitle}{Lastništvo objektov namesto avtomatskega čistilca pomnilnika med lenim izračunom}
-% TODO: Prevedi naslov v angleščino
-\newcommand{\ttitleEn}{Lastništvo objektov namesto avtomatskega čistilca pomnilnika med lenim izračunom}
+\newcommand{\ttitleEn}{Ownership model instead of garbage collection during lazy evaluation}
 \newcommand{\tsubject}{\ttitle}
 \newcommand{\tsubjectEn}{\ttitleEn}
 \newcommand{\tauthor}{Niki Bizjak}
 \newcommand{\temail}{nb2020@student.uni-lj.si}
 \newcommand{\myyear}{2023}
-% TODO: Dodaj ključne besede
-\newcommand{\tkeywords}{računalnik, računalnik, računalnik}
-\newcommand{\tkeywordsEn}{computer, computer, computer}
+\newcommand{\tkeywords}{prevajalnik, nestrog izračun, upravljanje s pomnilnikom, avtomatični čistilec pomnilnika, lastništvo objektov}
+\newcommand{\tkeywordsEn}{compiler, lazy evaluation, memory management, garbage collector, ownership model}
 \newcommand{\mysupervisor}{doc.~dr.\ Boštjan Slivnik}
 \newcommand{\mycosupervisor}{}
 
@@ -93,209 +87,260 @@
 \chapter{Uvod}
 \label{ch:uvod}
 
-Datoteka {\tt magistrska\_naloga.tex} na kratko opisuje, kako se pisanja magistrskega dela lotimo z uporabo programskega pateka \LaTeX. V tem dokumentu bomo predstavili nekaj njegovih prednosti in hib. Kar se slednjih tiče, mi pride na misel ena sama. Ko se srečamo z njim, nam izgleda kot kislo jabolko, nismo prepričani, da bi želeli vanj ugrizniti. Lahko pa z njim pripravimo odličen zavitek ali pa pridemo na okus.
+Pomnilnik je dandanes kljub uvedbi pomnilniške hierarhije še vedno eden izmed najpočasnejših delov računalniške arhitekture. Učinkovito upravljanje s pomnilnikom je torej ključnega pomena za učinkovito izvajanje programov. Upravljanje s pomnilnikom v grobem ločimo na ročno in avtomatično~\cite{jones2023garbage}. Pri ročnem upravljanju s pomnilnikom programski jezik vsebuje konstrukte za dodeljevanje in sproščanje pomnilnika. Odgovornost upravljanja s pomnilnikom leži na programerju, zato je ta metoda podvržena človeški napaki. Pogosti napaki sta puščanje pomnilnika (angl. memory leaking), pri kateri dodeljen pomnilnik ni sproščen, in viseči kazalci (angl. dangling pointers), ki kažejo na že sproščene in zato neveljavne dele pomnilnika~\cite{jones2023garbage}.
 
-V Poglavju~\ref{ch:uvod} bomo na hitro spoznali besedilne konstrukte kot so izreki, enačbe in dokazi. Naučili se bomo, kako se na njih sklicujemo. V Poglavju~\ref{ch:sklicevanje} se bomo srečali s sklicevanjem na besedilne konstrukte. Poglavje~\ref{ch:plovke} bo predstavilo vključevanje plovk: slik in tabel. V Poglavju~\ref{ch3} se bomo srečali s sklicevanjem na literaturo.
-Sledil bo samo še zaključek.
+Pri avtomatičnem upravljanju s pomnilnikom zna sistem sam dodeljevati in sproščati pomnilnik. Tukaj ločimo posredne in neposredne metode. Ena izmed neposrednih metod je npr. štetje referenc~\cite{collins1960method}, pri kateri za vsak objekt na kopici hranimo metapodatek o številu kazalcev, ki se sklicujejo nanj. V tem primeru moramo ob vsakem spreminjanju referenc zagotavljati še ustrezno posodabljanje števcev, kadar pa število kazalcev pade na nič, objekt izbrišemo iz pomnilnika. Posredne metode, npr. označi in pometi~\cite{mccarthy1960recursive}, ne posodabljajo metapodatkov na pomnilniku ob vsaki spremembi, temveč se izvedejo le, kadar se prekorači velikost kopice. Algoritem pregleda kopico in ugotovi, na katere objekte ne kaže več noben kazalec ter jih odstrani. Nekateri algoritmi podatke na kopici tudi defragmentirajo in s tem zagotovijo boljšo lokalnost ter s tem boljše predpomnjenje~\cite{fenichel1969lisp}.
 
-Bodite pozorni, da se v glavni mapi nahajata še datoteki \verb+ declaration.tex+ in \verb+ izjava.tex+. Ti datoteki se ločeno prevedeta, ju podpišete in oddate v referat ločeno od magistrske naloge.
+Avtomatično čiščenje pomnilnika pa ima tudi svoje probleme. Štetje referenc v primeru pomnilniških ciklov privede do puščanja pomnilnika, metoda označi in pometi pa nedeterministično zaustavi izvajanje glavnega programa in tako ni primerna za časovno-kritične (angl. real-time) aplikacije. Kot alternativa obem načinom upravljanja s pomnilnikom sistemski programski jezik Rust implementira model lastništva~\cite{klabnik2023rust}. Med \textit{prevajanjem} zna s posebnimi pravili zagotoviti, da se pomnilnik objektov na kopici avtomatično sprosti, kadar jih program več ne potrebuje. To pa zna storiti brez čistilca pomnilnika in brez eksplicitnega dodeljevanja in sproščanja pomnilnika, zato zagotavlja predvidljivo sproščanje pomnilnika.
 
-%----------------------------------------------------------------
-% Poglavje (Chapter) 2
-%----------------------------------------------------------------
-\chapter{Sklicevanje na besedilne konstrukte}
-\label{ch:sklicevanje}
+V magistrskem delu se bomo primarno ukvarjali s STG jezikom. Operacijska semantika tega veleva, da so vsi izrazi v izvorni kodi v pomnilniku predstavljeni kot zaprtja. Jezik vsebuje izraz \texttt{let}, ki na kopici ustvari novo zaprtje, izbirni izraz \texttt{case} pa šele dejansko izračuna njegovo vrednost. Jezik STG za čiščenje zaprtij iz kopice uporablja generacijski čistilec pomnilnika~\cite{jones1992implementing, marlow2004making}. 
 
-Matematična ali popolna indukcija je eno prvih orodij, ki jih spoznamo za dokazovanje trditev pri matematičnih predmetih.
-\begin{izrek}
-\label{iz:1}
-Za vsako naravno število $n$ velja
-\begin{equation}
-n < 2^n.
-\label{eq:1}
-\end{equation}
-\end{izrek}
-\begin{dokaz}
-Dokazovanje z indukcijo zahteva, da neenakost~\eqref{eq:1} najprej preverimo za najmanjše naravno število --- $0$. Res, ker je $0 < 1 = 2^0$, je neenačba~\eqref{eq:1} za $n=0$ izpolnjena.
-
-Sledi indukcijski korak. S predpostavko, da je neenakost~\eqref{eq:1} veljavna pri nekem naravnem številu $n$, je potrebno pokazati, da je ista neenakost v veljavi tudi pri njegovem nasledniku --- naravnem številu $n+1$. Izračun zapišemo s tremi vrsticami, ki jih končamo s piko, saj do del tega stavka:
-\begin{align}
-n+1 &< 2^n + 1,  \label{eq:2}\\
-    &\le 2^n + 2^n, \label{eq:3}\\
-    &= 2^{n+1}. \nonumber
-\end{align}
-Neenakost~\eqref{eq:2} je posledica indukcijske predpostavke, neenakost~\eqref{eq:3} pa enostavno dejstvo, da je za vsako naravno število $n$ izraz $2^n$ vsaj tako velik kot 1. S tem je dokaz Izreka~\ref{iz:1} zaključen.
-\end{dokaz}
-
-Opazimo, da je \LaTeX\ številko izreka podredil številki poglavja.
+Cilj magistrske naloge je pripraviti simulator STG stroja, nato pa spremeniti STG jezik tako, da bo namesto avtomatičnega čistilca pomnilnika uporabljal model lastništva po zgledu programskega jezika Rust. Zanimalo nas bo, kakšne posledice to v STG stroj prinese, kakšne omejitve se pri tem pojavijo ter do kakšnih problemov lahko pri tem pride. Zavedati se moramo, da obstaja možnost, da koncepta lastništva ni mogoče vpeljati v STG stroj brez korenitih sprememb zasnove stroja samega - v tem primeru bomo podali analizo, zakaj lastništva v STG stroj ni mogoče vpeljati.
 
 
+\chapter{Pregled področja}
+\label{ch:pregled-podrocja}
 
-%----------------------------------------------------------------
-% Poglavje (Chapter) 3
-%----------------------------------------------------------------
-\chapter{Plovke: slike in tabele}
-\label{ch:plovke}
+Leni funkcijski programski jeziki funkcije obravnavajo kot prvorazredne objekte (angl. first-class objects), kar pomeni, da so lahko funkcije argumenti drugim funkcijam in da lahko funkcije kot rezultate vračajo druge funkcije. Taki jeziki pogosto omogočajo in spodbujajo tvorjenje novih funkcij z uporabo delne aplikacije~\cite{10.1145/72551.72554}, pri kateri je funkciji podanih le del njenih argumentov. Leni funkcijski programski jeziki uporabljajo nestrogo semantiko, ki deluje na principu prenosa po potrebi (angl. call-by-need)~\cite{scott2016programming}, pri kateri se pri klicu funkcij ne izračuna najprej vrednosti argumentov, temveč se računanje izvede šele takrat, ko telo funkcije vrednost dejansko potrebuje. Nestroga semantika je običajno implementirana z ovijanjem izrazov v zakasnitve (angl. thunks)~\cite{peyton1987implementation}, tj. funkcije brez argumentov, ki se evalvirajo šele, kadar je njihova vrednost dejansko zahtevana.
 
-Slike in daljše tabele praviloma vključujemo v dokument kot plovke. Pozicija plovke v končnem izdelku ni pogojena s tekom besedila, temveč z izgledom strani. \LaTeX\ bo skušal plovko postaviti samostojno, praviloma na vrh strani, na kateri se na takšno plovko prvič sklicujemo. Pri tem pa bo na vsako stran končnega izdelka želel postaviti tudi sorazmerno velik del besedila. V skrajnem primeru, če imamo res preveč plovk, se bo odločil za stran popolnoma zapolnjeno s plovkami.
+Ker je v funkcijskih jezikih lahko funkcija vrednost argumenta ali rezultata, je lahko izvajanje take funkcije zamaknjeno v čas po koncu izvajanja funkcije, ki je ustvarila vrednost argumenta ali rezultata. Zato klicnih zapisov takih funkcij ni mogoče hraniti na skladu, temveč na kopici~\cite{jones2023garbage}. Na kopici so zakasnitve in funkcije shranjene kot \textit{zaprtja} (angl. closures), tj. podatkovne strukture, v katerih se poleg kode hranijo še kazalci na podatke, ki so zahtevani za izračun telesa. Pri izvajanju se tako na kopici nenehno ustvarjajo in brišejo nova zaprtja, ki imajo navadno zelo kratko življenjsko dobo, zato je nujna učinkovita implementacija dodeljevanja in sproščanja pomnilnika. Haskell za to uporablja \textit{generacijski} avtomatični čistilec pomnilnika~\cite{sansom1993generational, GHC}. Danes vsi večji funkcijski programski jeziki, ki omogočajo leni izračun, uporabljajo avtomatični čistilec pomnilnika~\cite{turner1985miranda, czaplicki2012elm, brus1987clean, syme2017the, sperber2009revised6}.
 
-\section{Formati slik}
-Bitne slike, vektorske slike, kakršnekoli slike, z \LaTeX{}om lahko vključimo vse.
-Slika~\ref{pic1} je v {\tt .pdf} formatu.
-\begin{figure}
-    \begin{center}
-        \includegraphics[width=10cm]{pic1.pdf}
-    \end{center}
-\caption{Herschelov graf, vektorska grafika.}
-\label{pic1}
+Lene funkcijske programske jezike najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{peyton1987implementation}. Eden izmed načinov za izvajanje redukcije je abstraktni STG stroj (angl. Spineless Tagless G-machine)~\cite{jones1992implementing}, ki definira in zna izvajati majhen funkcijski programski jezik STG. STG stroj in jezik se uporabljata kot vmesni korak pri prevajanju najpopularnejšega lenega jezika Haskell v prevajalniku GHC (Glasgow Haskell Compiler)~\cite{GHC}.
+
+Ena izmed alternativ STG stroja za izvajanje jezikov z nestrogo semantiko je  prevajalnik GRIN~\cite{boquist1997grin} (angl. graph reduction intermediate notation), ki podobno kot STG stroj definira majhen funkcijski programski jezik, ki ga zna izvajati s pomočjo redukcije grafa. Napisane ima prednje dele za Haskell, Idris in Agdo, ponaša pa se tudi z zmožnostjo optimizacije celotnih programov (angl. whole program optimization)~\cite{podlovics2022modern}. Za upravljanje s pomnilnikom se v trenutni različici uporablja čistilec pomnilnika~\cite{boquist1999code}.
+
+Programski jezik Rust za upravljanje s pomnilnikom uvede princip lastništva (angl. ownership model) ~\cite{klabnik2023rust}, pri katerem ima vsak objekt na kopici natančno enega \textit{lastnika}~\cite{Jung, Oxide, StackedBorrows}. Kadar gre spremenljivka, ki si lasti objekt, izven dosega (angl. out of scope), se pomnilnik za objekt sprosti. Rust definira pojem \textit{premika} (angl. move), pri katerem druga spremenljivka prevzame lastništvo (in s tem odgovornost za čiščenje pomnilnika) in \textit{izposoje} (angl. borrow), pri katerem se ustvari (angl. read-only) referenca na objekt, spremenljivka pa \textit{ne} prevzame lastništva. Preverjanje pravilnosti sproščanja pomnilnika se izvaja \textit{med prevajanjem} v posebnem koraku analize izposoj in premikov (angl. borrow checker). Prevajalnik zna v strojno kodo dodati ustrezne ukaze, ki ustrezno sproščajo pomnilnik in tako na predvidljiv, varen in učinkovit način zagotovi upravljanje s pomnilnikom.
+
+Na podlagi principa lastništva in izposoje iz Rusta je nastal len funkcijski programski jezik Blang~\cite{Kocjan_Turk_2022}. Interpreter jezika zna pomnilnik za zaprtja izrazov in spremenljivk med izvajanjem samodejno sproščati brez uporabe čistilcev, zatakne pa se pri sproščanju funkcij in delnih aplikacij.
+
+Programski jezik micro-mitten~\cite{corbyn:practical-static-memory-management} je programski jezik, podoben Rustu, ki za upravljanje s pomnilnikom uporablja princip ASAP (angl. As Static As Possible)~\cite{proust2017asap}. Prevajalnik namesto principa lastništva izvede zaporedje analiz pretoka podatkov (angl. data-flow), namen katerih je aproksimirati statično živost spremenljivk na kopici. Pri tem prevajalnik ne postavi dodatnih omejitev za pisanje kode, kot jih poznamo npr. v Rustu, kjer mora programer za pisanje delujoče in učinkovite kode v vsakem trenutku vedeti, katera spremenljivka si objekt lasti in kakšna je njena življenjska doba. Metoda ASAP še ni dovolj raziskana in tako še ni primerna za produkcijske prevajalnike.
+
+\section{STG jezik}
+\label{sec:stg}
+
+Na tem mestu bomo na kratko opisali delovanje prevajalnika GHC (angl. Glasgow Haskell compiler), ki izvorno kodo napisano v programskem jeziku Haskell prevede v strojno kodo. Pri prevajanju se program transformira v več različnih vmesnih predstavitev (angl. intermediate representation), mi pa se bomo v magistrskem delu osredotočili predvsem na vmesno kodo imenovano STG jezik (angl. Spineless tagless G-Machine language), katerega delovanje bomo podrobneje opisali v razdelku \ref{sec:stg-jezik}.
+
+\subsection{Prevajalnik GHC}
+\label{sec:prevajalnik-ghc}
+
+% TODO: Dodaj shemo prevajanja Haskell -> strojna koda
+
+Prevajalnik GHC (angl. Glasgow Haskell compiler) prevajanje iz izvorne kode v programskem jeziku Haskell v strojno kodo izvaja v več zaporednih fazah oziroma modulih. Vsaka faza kot vhod prejme izhod prejšnje, nad njim izvede določeno transformacijo in rezultat posreduje naslednji fazi. Faze glede na njihovo funkcijo v grobem delimo na tri dele. V prednjem delu (angl. front-end) se nad izvorno kodo najprej izvede leksikalna analiza, pri kateri se iz toka znakov, ki predstavljajo vhodni program pridobi abstraktno sintaktično drevo (angl. abstract syntax tree). Nad drevesom se izvede še zaporedje semantičnih analiz pri katerih se preveri ali je program pomensko pravilen. Sem sodi razreševanje imen, pri kateri se razreši vsa imena spremenljivk iz uvoženih modulov v programu in preveri ali so vse spremenljivke deklarirane pred njihovo uporabo. Izvede se še preverjanje tipov, kjer se za vsak izraz izpelje njegov najbolj splošen tip in preveri ali se vsi tipi v programu ujemajo.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}
+		\tikzset{
+			every node/.append style={text width=1.4cm,execute at begin node=\setlength{\baselineskip}{1em},font=\footnotesize},
+			block/.style={draw,rectangle,text width=2cm,align=center,minimum height=1cm,minimum width=2cm},
+		}
+		
+		% Srednji del prevajalnika
+		\node[block] (optimizacija) {Optimizacija};
+		\node[coordinate, left=2.6cm of optimizacija] (center-levo) {};
+		\node[coordinate, right=2.6cm of optimizacija] (center-desno) {};
+		
+		% Prednji del prevajalnika
+		\node[block, above=0.55cm of center-levo] (semanticna-analiza) {Semantična analiza};
+		\node[block, above=0.55cm of semanticna-analiza] (razclenjevanje) {Razčlen\-je\-van\-je};
+		\node[block, below=0.55cm of semanticna-analiza] (izpeljava-tipov) {Izpeljava tipov};
+		\node[block, below=0.55cm of izpeljava-tipov] (razsladenje) {Razsladenje};
+		
+		% Zadnji del prevajalnika
+		\node[block, above=0.55cm of center-desno] (stg-to-cmm) {Izbira \texttt{C--} ukazov};
+		\node[block, above=0.55cm of stg-to-cmm] (core-to-stg) {Izbira STG ukazov};
+		
+		% Moznosti prevajanja C-- -> strojna koda
+		\node[block, minimum height=0.6cm, below=0.9cm of stg-to-cmm] (neposredno) {Neposredno};
+		\node[block, minimum height=0.6cm, below=0.3cm of neposredno] (gcc) {GCC};
+		\node[block, minimum height=0.6cm, below=0.3cm of gcc] (llvm) {LLVM};
+		
+		% 
+		\node[coordinate, left=0.4cm of neposredno.west] (levo-od-neposredno) {};
+		\node[coordinate, left=0.4cm of gcc.west] (levo-od-gcc) {};
+		\node[coordinate, left=0.4cm of llvm.west] (levo-od-llvm) {};
+		\draw[-] (levo-od-neposredno) -- (levo-od-gcc) -- (levo-od-llvm);
+		\draw[->] (levo-od-neposredno) -- (neposredno);
+		\draw[->] (levo-od-gcc) -- (gcc);
+		\draw[->] (levo-od-llvm) -- (llvm);
+		
+		\node[coordinate, right=0.4cm of neposredno.east] (desno-od-neposredno) {};
+		\node[coordinate, right=0.4cm of gcc.east] (desno-od-gcc) {};
+		\node[coordinate, right=0.4cm of llvm.east] (desno-od-llvm) {};
+		\draw[-] (desno-od-neposredno) -- (desno-od-gcc) -- (desno-od-llvm);
+		\draw[-] (neposredno) -- (desno-od-neposredno);
+		\draw[-] (gcc) -- (desno-od-gcc);
+		\draw[-] (llvm) -- (desno-od-llvm);
+
+		\node[coordinate, below=0.55cm of stg-to-cmm] (pod-stg-to-cmm) {};
+		\node[coordinate] at (pod-stg-to-cmm -| levo-od-neposredno) (nad-levo-od-neposredno) {};
+		\draw[-] (stg-to-cmm) -- (pod-stg-to-cmm) node[pos=0.5,right] {\scriptsize \texttt{C--}} -- (nad-levo-od-neposredno) -- (levo-od-neposredno) ;
+		
+		\draw[->] (razclenjevanje) -- (semanticna-analiza) node[pos=0.5,right] {\scriptsize AST};
+		\draw[->] (semanticna-analiza) -- (izpeljava-tipov) node[pos=0.5,right] {\scriptsize AST};
+		\draw[->] (izpeljava-tipov) -- (razsladenje) node[pos=0.5,right] {\scriptsize AST};
+		
+		\draw[->] (core-to-stg) -- (stg-to-cmm) node[pos=0.5,right] {\scriptsize STG};
+		
+		% Puscica "Generator vmesne kode" -> "Optimizacija vmesne kode"
+		\node[coordinate, left=0.5cm of optimizacija.west] (levo-od-optimizacija) {};
+		\node[coordinate] at (razsladenje -| levo-od-optimizacija) (desno-od-razsladenje) {};
+		
+		\draw[->] (razsladenje.east) -- (desno-od-razsladenje) -- (levo-od-optimizacija) node[pos=0.5,right] {\scriptsize Core} -- (optimizacija);
+		
+		% Puscica "Optimizacija vmesne kode" -> "Izbira ukazov"
+		\node[coordinate, right=0.5cm of optimizacija.east] (desno-od-optimizacija) {};
+		\node[coordinate] at (core-to-stg -| desno-od-optimizacija) (levo-od-izbira-ukazov) {};
+		
+		\draw[->] (optimizacija) -- (desno-od-optimizacija) -- (levo-od-izbira-ukazov) node[pos=1.0,left,align=right] {\scriptsize Core} -- (core-to-stg);
+		
+		% Vhodna povezava "Zacetek" -> "Leksikalna analiza"
+		\node[coordinate, left=2cm of center-levo] (zacetek) {};
+		\node[coordinate, left=0.5cm of razclenjevanje] (levo-od-razclenjevanje) {};
+		\node[coordinate] at (zacetek -| levo-od-razclenjevanje) (desno-od-zacetek) {};
+		
+		\draw[->] (zacetek) -- (desno-od-zacetek) -- (levo-od-razclenjevanje) node[pos=0.2,left,text width=0.9cm] {\scriptsize tok\\znakov} -- (razclenjevanje);
+		
+		% Koncna povezava
+		\node[coordinate, right=2cm of center-desno] (konec) {};
+		\node[coordinate] at (konec -| desno-od-neposredno) (levo-od-konec) {};
+		\draw[->] (desno-od-neposredno) -- (levo-od-konec) -- (konec) node[pos=1,above] {\scriptsize strojna\\koda};
+		
+		% Locevalne crte
+		\node[coordinate, left=0.25cm of levo-od-optimizacija] (sprednji-del-center) {};
+		\node[coordinate, above=3.7cm of sprednji-del-center] (sprednji-del-zgoraj) {};
+		\node[coordinate, below=3.2cm of sprednji-del-center] (sprednji-del-spodaj) {};
+		\draw[dashed] (sprednji-del-zgoraj) -- (sprednji-del-spodaj) node[pos=0,left=0.2cm,text width=2cm,align=right] {prednji del} node[pos=0,right=0.2cm,text width=2cm] {srednji del};
+		
+		\node[coordinate, right=0.25cm of desno-od-optimizacija] (zadnji-del-center) {};
+		\node[coordinate, above=3.7cm of zadnji-del-center] (zadnji-del-zgoraj) {};
+		\node[coordinate, below=3.2cm of zadnji-del-center] (zadnji-del-spodaj) {};
+		\draw[dashed] (zadnji-del-zgoraj) -- (zadnji-del-spodaj) node[pos=0,right=0.2cm,text width=2cm] {zadnji del};
+		
+	\end{tikzpicture}
+	\caption{Pomembnejše faze prevajalnika Glasgow Haskell compiler}
+	\label{fig:shema-ghc}
 \end{figure}
-Pa res lahko vključimo slike katerihkoli formatov? Žal ne. Programski paket \LaTeX\ lahko uporabljamo v več dialektih. Ukaz {\tt latex} ne mara vključenih slik v formatu Portable Document Format {\tt .pdf}, ukaz {\tt pdflatex} pa ne prebavi slik v Encapsulated Postscript Formatu {\tt .eps}.
-Strnjeno v Tabeli~\ref{tbl:1}.
 
-\begin{table}
-\caption{}
-    \begin{center}
-        \begin{tabular}{l|ccc}
-            ukaz/format & {\tt .pdf} & {\tt .eps} & ostali formati \\ \hline
-                        {\tt pdflatex} & da & ne & da \\
-                        {\tt latex}   & ne & da  & da
-        \end{tabular}
-    \end{center}
-\label{tbl:1}
-\end{table}
+Ker je Haskell programski jezik, ki je namenjen ljudem, je precej velik jezik, z veliko različnimi sintaktičnimi oblikami in konstruktorji. Tako lahko npr. programer napiše isto kodo na več različnih načinov. S perspektive piscev prevajalnikov pa to pomeni veliko več dela, saj je potrebno zagotoviti, da se vsi konstrukti v strojno kodo prevedejo pravilno. Za odpravljanje te težave se v zadnjem koraku prednjega dela prevajalnika imenovanem razsladenje (angl. desugarification), sintaktično drevo jezika Haskell pretvori v sintaktično drevo jezika Core. Ta je zelo majhen funkcijski programski jezik, ki temelji na lambda računu, kjub svojem majhnem naboru konstruktov pa še vedno omogoča zapis poljubnega Haskell programa. Naslednje faze tako operirajo nad dosti manjšim jezikom, kar precej poenostavi prevajanje.
 
-Nasvet? Odločite se za uporabo ukaza {\tt pdflatex}. Vaš izdelek bo brez vmesnih stopenj na voljo v {.pdf} formatu in ga lahko odnesete v vsako tiskarno. Če morate na vsak način vključiti sliko, ki jo imate v {\tt .eps} formatu, jo vnaprej pretvorite v alternativni format, denimo {\tt .pdf}.
+Srednji del (angl. middle-end) prevajalnika sestavlja zaporedje optimizacij, ki kot vhod sprejmejo program v Core jeziku in vrnejo izboljšan program v Core jeziku. Rezultat niza optimizacij se posreduje zadnjemu delu (angl. back-end) prevajalnika, ki poskrbi za prevajanje Core jezika v strojno kodo, ki se lahko neposredno izvaja na procesorju. Na tem mestu se Core jezik prevede v STG jezik, ta pa se nato prevede v programski jezik \texttt{C--}. Slednji je podmnožica programskega jezika C in ga je mogoče v strojno kodo prevesti na tri načine: neposredno ali z enim izmed prevajalnikov LLVM ali GCC. Prednost take vrste prevajanja je v večji prenosljivosti programov, saj znata LLVM in GCC generirati kodo za večino obstoječih procesorskih arhitektur, poleg tega pa imata vgrajene še optimizacije, ki pohitrijo delovanje izhodnega programa.
 
-Včasih se da v okolju za uporabo programskega paketa \LaTeX\ nastaviti na kakšen način bomo prebavljali vhodne dokumente. Spustni meni na Sliki~\ref{pic2} odkriva uporabo \LaTeX{}a v njegovi pdf inkarnaciji --- {\tt pdflatex}.
-\begin{figure}
-\begin{center}
-\includegraphics[width=10cm]{pic2.png}
-\end{center}
-\caption{Kateri dialekt uporabljati?}
-\label{pic2}
-\end{figure}
-Vključena Slika~\ref{pic2} je seveda bitna.
+\subsection{STG jezik}
+\label{sec:stg-jezik}
+
+Lene funkcijske programske jezike najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{peyton1987implementation}. Eden izmed načinov za izvajanje redukcije je abstraktni STG stroj (angl. Spineless Tagless G-machine)~\cite{jones1992implementing}, ki definira in zna izvajati majhen funkcijski programski jezik STG. STG stroj in jezik se uporabljata kot vmesni korak pri prevajanju najpopularnejšega lenega jezika Haskell v prevajalniku GHC (Glasgow Haskell Compiler)~\cite{GHC}.
+
+% Kaj sploh je STG stroj in kaj je STG jezik
+
+\subsubsection{Lena evalvacija}
+
+Ena izmed najpomembnejših lastnosti lenih funkcijskih programskih jezikov je njihova nestroga semantika (angl. non-strict semantic). Ta narekuje kako se evalvirajo oziroma računajo argumenti pri klicu funkcije. Pri jezikih z nestrogo semantiko se računanje vrednosti argumentov funkcije ne izvede ob klicu, temveč šele takrat ko se izvaja telo funkcije. Ker se vrednosti argumentov ne izračunajo nemudoma, temveč se računanje zamakne v času dokler funkcija vrednosti arugmenta dejansko ne potrebuje, je taka semantika imenovana tudi za leno.
+
+% TODO: Preveri kako deluje nestroga semantika v knjigi
+$$ f \bot = \bot $$
+
+Leno evalvacijo najpogosteje implementiramo s pomočjo zakasnitev (angl. thunks). Te so na pomnilniku predstavljene kot kazalec na kodo, ki izračuna njihovo vrednost. Ob evalvaciji zakasnitve se najprej izračuna njihova vrendost, izračunano vrednost pa se shrani v struktro na pomnilniku, da je ob naslednji evalvaciji ni potrebno ponovno računati. Na tak način se z nestrogo semantiko doseže, da se vsak izraz izračuna \textit{največ enkrat}. Če se argument ne pojavi nikjer v telesu funkcije, se zakasnitve nikoli ne računa, če pa se v telesu pojavi večkrat, se vrednost izračuna enkrat, za vsako nadaljno evalvacijo argumenta pa se preprosto vrne vrednost shranjeno na pomnilniku.
+
+% TODO: Kaj je razlika med eval/apply in push/enter modelom
+% Kaj se spremeni, če dodamo enega in drugega
+% Katero različico trenutno uporablja Haskell
+
+Nestrogo semantiko je moč implementirati na dva različna načina:
+
+\begin{itemize}
+	\itemsep 0em
+	\item model potisni / vstopi (angl. push / enter model)
+	\item model evalviraj / apliciraj (angl. eval / apply model)
+\end{itemize}
+
+Abstraktni STG stroj je zgodovinsko najprej uporabljal model potisni / vstopi~\cite{jones1992implementing}. Trenutna različica STG stroja pa uporablja model evalviraj / apliciraj~\cite{marlow2004making}, saj se je empirično izkazal za bolj učinkovito implementacijo nestroge semantike.
+
+\subsubsection{Definicija jezika}
+
+V sledečem poglavju bomo podali formalno definicijo jezika STG definirano v \cite{marlow2004making}. Od originalne implementacije v \cite{jones1992implementing} se razlikuje po tem, da implementacija ni več brez oznak (angl. tagless), temveč nosi vsak objekt na kopici še dodatno polje z informacijo o njegovi vrsti. Ker je število tipov objektov majhno, se za oznako objekta navadno uporablja kar celoštevilčna vrednost. V originalni implementaciji so bili vsi objekti na kopici predstavljeni enotno, kar je pomenilo bolj kompaktno predstavitev podatkov v pomnilniku, prav tako pa STG stroju ni bilo treba preverjati vrste objektov ob vsakem klicu funkcije. Prednost ponovne uvedbe oznak pa je v tem, da STG stroju ni potrebno vzdrževati dveh ločenih skladov za argumente in vrednosti, kar pa tudi poenostavi delovanje čistilca pomnilnika.
+% TODO: Citat
+
+Sledi formalna definicija STG jezika. Pri tem bomo spremenljivke označevali s poševnimi malimi tiskanimi črkami $x, y, f, g$, konstruktorje pa s poševnimi velikimi tiskanimi črkami $C$.
+\begin{align*}
+	literal \quad \coloneq& \quad \underline{int} \enspace \vert \enspace \underline{double} & \text{primitivne vrednosti}
+\end{align*}
+
+% TODO: Kakšen je prevod za boxed? Unboxed?
+STG jezik podpira dva primitivna (angl. unboxed) podatkovna tipa: celoštevilske vrednosti in števila s plavajočo vejico. Poleg tega omogoča uvajanje novih algebraičnih podatkovnih tipov. Objekte algebraičnih tipov tvorimo s pomočjo konstruktorjev $C$.
+\begin{align*}
+	a, v \quad \coloneq& \quad literal \enspace \vert \enspace x & \text{argumenti so atomarni}
+\end{align*}
+
+Vsi argumenti pri aplikaciji funkcij in primitivnih operacij so v A-normalni obliki (angl. A-normal form)~\cite{flanagan1993essence}, kar pomeni, da so atomarni (angl. atomic). Tako je vsak argument ali primitivni podatkovni tip ali pa spremenljivka. Pri prevajanju v STG jezik lahko prevajalnik sestavljene argumente funkcij priredi novim spremenljivkam z ovijanjem v \texttt{let} izraz in spremenljivke uporabi kot argumente pri klicu funkcije. Pri tem je potrebno zagotoviti, da so definirane spremenljivke unikatne oziroma, da se ne pojavijo v ovitem izrazu. Aplikacijo funkcije $f \; (\oplus \; x \; y)$ bi tako ovili v \texttt{let} izraz $\texttt{let} \enspace a = \oplus \; x \; y \enspace \texttt{in} \enspace f \enspace a$, s čemer bi zagotovili, da so vsi argumenti atomarni.
+
+\begin{align*}
+	k \quad \coloneq& \quad \bullet & \text{neznana mestnost funkcije}\\
+	\vert& \quad n & \text{znana mestnost $n \geq 1$}\\
+\end{align*}
+
+Prevajalnik lahko med prevajanjem za določene funkcije določi njihovo mestnost (angl. arity), tj. število argumentov, ki jih funkcija sprejme. Ker pa je STG funkcijski jezik, lahko funkcije nastopajo tudi kot argumenti drugih funkcij, zato včasih določevanje mestnosti ni mogoče. Povsem veljavno bi bilo vse funkcije v programu označiti z neznano mestnostjo $\bullet$, a je mogoče s podatkom o mestnosti klice funkcij implementirati bolj učinkovito, zato se med prevajanjem izvaja tudi analiza mestnosti. 
+
+\begin{align*}
+	expr \quad \coloneq& \quad a & \text{atom}\\
+	\vert& \quad f^k a_1 \dots a_n & \text{klic funkcije ($n \geq 1$)}\\
+	\vert& \quad \oplus a_1 \dots a_n & \text{primitivna operacija ($n \geq 1$)}\\
+	\vert& \quad \texttt{let} \enspace x = obj \enspace \texttt{in} \enspace e & \text{} \\
+	\vert& \quad \texttt{case} \enspace e \enspace \texttt{of} \enspace \{ alt_1; \dots; alt_n \}& \text{} \\
+\end{align*}
+
+Pri tem velja, da so vse primitivne operacije \textit{saturirane}, kar pomeni, da sprejmejo natanko toliko argumentov, kot je mestnost (angl. arity) funkcije. Če programski jezik omogoča delno aplikacijo primitivnih funkcij, potem je potrebno take delne aplikacije z $\eta$-dopolnjevanjem razširiti v saturirano obliko. Pri tem delno aplikacijo ovijemo v nove lambda izraze z uvedbo novih spremenljivk, ki se ne pojavijo nikjer v izrazu. Tako npr. izraz \texttt{(+ 3)}, ki predstavlja delno aplikacijo vgrajene funkcije za seštevanje prevedemo v funkcijo $\lambda x . (+ 3 x)$ in s tem zadostimo pogoju saturiranosti.
+
+\begin{align*}
+	alt \quad \coloneq& \quad C \enspace x_1 \dots x_n \to expr & \text{algebraična alternativa}\\
+	\vert& \quad x \to expr & \text{privzeta alternativa}\\
+\end{align*}
+
+Podatkovne objekte na kopici je mogoče ustvarjati le z enim konstruktom, in sicer \texttt{let} izrazom. Ta nam omogoča prirejanje objekta spremeljivki, ki je vidna v telesu \texttt{let} izraza.
+
+% TODO: Ali dodamo tudi naslednje?
+% Dodamo najbrž šele potem, ko bomo govorili o konsturktorjih.
+% Pomembno se nam zdi še poudariti, da sta pojma oznake objekta na kopici in oznake konstruktorja 
+
+\begin{align*}
+	obj \quad \coloneq& \quad \text{FUN}(x_1 \dots x_n \to e) & \text{aplikacija}\\
+	\vert& \quad \text{PAP}(f \; a_1 \dots a_n) & \text{delna aplikacija}\\
+	\vert& \quad \text{CON}(C \; a_1 \dots a_n) & \text{konstruktor}\\
+	\vert& \quad \text{THUNK} \enspace e & \text{zakasnitev}\\
+	\vert& \quad \text{BLACKHOLE} & \text{črna luknja}
+\end{align*}
+
+Objekt \textsc{FUN} predstavlja funkcijsko ovojnico (angl. closure) z argumenti $x_1, \dots, x_n$ in telesom $e$, ki pa se lahko poleg argumentov $x_i$ sklicuje še na druge proste spremenljivke. Pri tem velja, da je lahko funkcija aplicirana na več kot $n$ ali manj kot $n$ argumentov, tj. je curryrana.
+% Andrej Bauer pravi, da je to okej.
+% https://twitter.com/andrejbauer/status/621602561368399872
+
+Objekt \textsc{PAP} predstavlja delno aplikacijo (angl. partial application) funkcije $f$ na argumente $x_1, \dots, x_n$. Pri tem je zagotovljeno, da bo $f$ objekt tipa \textsc{FUN}, katerega mestnost bo \textit{vsaj} $n$.
+
+Objekt \textsc{CON} predstavlja saturirano aplikacijo konstruktorja $C$ na argumente $a1, \dots a_n$. Pri tem je število argumentov, ki jih prejme konstruktor natančno enako številu parametrov, ki jih zahteva.
+
+Objekt \textsc{THUNK} predstavlja zakasnitev izraza $e$. Kadar se vrednost izraza uporabi, tj. kadar se izvede \texttt{case} izraz, se izračuna vrednost $e$, \textsc{THUNK} objekt na kopici pa se nato posodobi s preusmeritvijo (angl. indirection) na vrednost $e$. Pri evalvaciji zakasnitve se objekt \textsc{THUNK} na kopici zamenja z objektom \textsc{BLACKHOLE}, s čemer se preprečuje puščanje pomnilnika~\cite{jones1992tail} in neskončnih rekurzivnih struktur. Objekt \textsc{BLACKHOLE} se lahko pojavi le kot rezultat evalvacije zakasnitve, nikoli pa v vezavi v \texttt{let} izrazu.
 
 
+\section{Upravljanje s pomnilnikom}
 
-%----------------------------------------------------------------
-% Poglavje (Chapter) 4
-%----------------------------------------------------------------
-\chapter{Razno}
-\label{ch:razno}
+\section{Rustov model lastništva}
 
-\section{Notacije}
-\label{sec:notacije}
+% \chapter{Implementacija}
+%\label{ch:implementacija}
 
-Za notacijo spremenljivk ter skalarjev uporabimo običajno notacijo, t.j., spremenljivka $x$ in skalar $a$. Pri notaciji matrik ter vektorjev pa se poslužujemo krepega fonta. Torej, matrika $\boldsymbol{A}$ ter vektor $\boldsymbol{v}$,
-\begin{equation}
-\boldsymbol{A} = \begin{bmatrix}
-       a_{11} & a_{12} & \dots & a_{1q}  \\
-       a_{21} & a_{22} & \dots & a_{2q}  \\
-       \vdots  \\
-       a_{p1} & a_{p2} & \dots & a_{pq}  \\
-     \end{bmatrix}, \quad
-     \boldsymbol{v} = \begin{bmatrix}
-       x_1  \\
-       x_2  \\
-       \vdots  \\
-       x_q  \\
-     \end{bmatrix}. \nonumber
-\end{equation}
+%\chapter{Rezultati}
+%\label{ch:rezultati}
 
-%----------------------------------------------------------------
-\section{Lepe tabele in psevdokoda}
-\label{sec:psevdokoda}
+% Za potrebe naše magistrske naloge bomo v izbranem programskem jeziku implementirali simulator STG stroja. V programskem jeziku STG bomo napisali zbirko programov, s pomočjo katerih bomo testirali uspešnost implementirane metode. Merili bomo količino dodeljenega pomnilnika in količino sproščenega pomnilnika in skušali ugotoviti, ali je ves pomnilnik pravočasno sproščen. Cilj magistrskega dela ni izdelava učinkovite implementacije čiščenja pomnilnika, temveč skušati ugotoviti, kakšne spremembe in analize je potrebno dodati v STG stroj, da bo lahko uporabljal princip lastništva namesto čistilca pomnilnika.
 
-Psevdokoda~\ref{alg:primer} prikazuje primer delovanja genetskega algoritma, medtem ko Tabela~\ref{tab:params} prikazuje primer lepe tabele brez vertikalnih črt.
-
-\begin{algorithm}
-\caption{Psevdokoda genetskega algoritma}
-\label{alg:primer}
-\begin{algorithmic}[1]
-\footnotesize
-\STATE $t \gets 0$
-\STATE $InitPopulation[P(t)] \gets$ inicializiraj populacijo
-\STATE $EvalPopulation[P(t)] \gets$ evaluiraj populacijo
-\REPEAT
-\STATE $P'(t) \gets Variation[P(t)] \gets $ generiraj novo populacijo
-\STATE $EvalPopulation[P'(t)] \gets$ evaluiraj novo populacijo
-\STATE $P(t+1) \gets ApplyGeneticOperators[P'(t) \in Q]$
-\STATE $t \gets t+1$
-\UNTIL{prekinitev}
-\IF{rezultat dovolj dober}
-\STATE shrani rezultat
-\ENDIF
-\end{algorithmic}
-\end{algorithm}
-
-%---------------------------------------------------------------
-\begin{table}
-\caption{Primer enostavne tabele.}
-\centering
-\scalebox{0.82}{
-\begin{tabular}{c c c}
- \toprule
- Ime & Vrednost & Opis \\
- \midrule
- \textit{ $a$ } & 0.03 &  skalar \\
- \textit{ $x$ } & -1 & spremenljivka \\
- \bottomrule
-\end{tabular}
-}
-\label{tab:params}
-\end{table}
-
-%----------------------------------------------------------------
-% Poglavje (Chapter) 5
-%----------------------------------------------------------------
-\chapter{Kaj pa literatura?}
-\label{ch3}
-Kot smo omenili že v uvodu, je pravi način za citiranje literature uporaba \BibTeX{}a~\cite{ubi}.
-Programski paket \LaTeX je prvotno predstavljen v priročniku~\cite{Lamport} in je v resnici nadgradnja sistema \TeX\ avtorja Donalda Knutha, znanega po denimo, če izpustim njegovo umetnost programiranja, Knuth-Bendixovem algoritmu~\cite{Knuth}.
-
-Vsem raziskovalcem s področja računalništva pa svetujem v branje mnenje L.\ Fortnowa~\cite{Fortnow}.
-
-%----------------------------------------------------------------
-% Poglavje (Chapter) 6
-%----------------------------------------------------------------
-\chapter{Sklepne ugotovitve}
-Izbira \LaTeX\ ali ne \LaTeX\ je seveda prepuščena vam samim. Res je, da so prvi koraki v \LaTeX{}u težavni. Ta dokument naj vam služi kot začetna opora pri hoji.
-
-% ---------------------------------------------------------------
-% Appendix
-% ---------------------------------------------------------------
-\appendix
-%\addcontentsline{toc}{chapter}{Razširjeni povzetek}
-\chapter{Title of the appendix 1}
-
-Example of the appendix.
+%\chapter{Zaključek}
+%\label{ch:zakljucek}
 
 %----------------------------------------------------------------
 % SLO: bibliografija
 % ENG: bibliography
 %----------------------------------------------------------------
 \bibliographystyle{elsarticle-num}
-
-%----------------------------------------------------------------
-% SLO: odkomentiraj za uporabo zunanje datoteke .bib (ne pozabi je potem prevesti!)
-% ENG: uncomment to use .bib file (don't forget to compile it!)
-%----------------------------------------------------------------
-%\bibliography{bibliography}
-
-%----------------------------------------------------------------
-% SLO: zakomentiraj spodnji del, če uporabljaš zunanjo .bib datoteko
-% ENG: comment the part below if using the .bib file
-%----------------------------------------------------------------
-
-\begin{thebibliography}{99}
-\bibitem{Fortnow} L.\ Fortnow, ``Viewpoint: Time for computer science to grow up'',
-{\it Communications of the ACM}, št.\ 52, zv.\ 8, str.\ 33--35, 2009.
-\bibitem{Knuth} D.\ E.\ Knuth, P. Bendix. ``Simple word problems in universal algebras'', v zborniku: Computational Problems in Abstract Algebra (ur. J. Leech), 1970, str. 263--297.
-\bibitem{Lamport} L.\ Lamport. {\it LaTEX: A Document Preparation System}. Addison-Wesley, 1986.
-\bibitem{ubi} O.\ Patashnik (1998) \BibTeX{}ing.
-Dostopno na: \url{http://ftp.univie.ac.at/packages/tex/biblio/bibtex/contrib/doc/btxdoc.pdf}
-\bibitem{licence} licence-cc.pdf. Dostopno na: \url{https://ucilnica.fri.uni-lj.si/course/view.php?id=274}
-\end{thebibliography}
+\bibliography{bibliography}
 
 \end{document}
