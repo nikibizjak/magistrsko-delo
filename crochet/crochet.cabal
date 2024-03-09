@@ -7,23 +7,16 @@ maintainer:         bizjak.niki@gmail.com
 
 executable crochet
     main-is:          Main.hs
-    other-modules:    Language.Parser
-                      Language.Parser.Utils
-                      Language.Parser.Internal
-                      Language.Language
-                      Language.Printer
-                      Language.TypeChecker
-                      Language.TypeChecker.Internal
-                      Language.TypeChecker.Unify
-                      Language.TypeChecker.Types
-                      Language.Converter
-                      Language.Optimizer
-                      Language.Interpreter
-                      Stg.Stg
-                      Stg.Interpreter
-                      Exception
+    other-modules:
+        Stg.Stg
+        Stg.Pretty
+        Stg.Ownership
+        Stg.FreeVariables
+        Stg.NameResolution
+        Stg.Interpreter
+        Exception
     build-depends:
-        base == 4.17.2.0,
+        base == 4.17.2.1,
         directory == 1.3.7.1,
         containers == 0.6.7,
         mtl == 2.3.1,
