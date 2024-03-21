@@ -9,11 +9,11 @@ import Stg.NameResolution
 program :: Program
 program = [
     -- Binding "main" (Thunk (Atom $ Literal $ Integer 1))
-    -- Binding "main" (Thunk (Atom $ Variable $ BorrowedVariable "main"))
-    -- Binding "main" (Thunk (LetIn "a" (Constructor "True" []) (Atom $ Variable $ BorrowedVariable "a")))
+    -- Binding "main" (Thunk (Atom $ Variable $ MovedVariable "main"))
+    -- Binding "main" (Thunk (LetIn "a" (Constructor "True" []) (Atom $ Variable $ MovedVariable "a")))
     -- Binding "main" (Thunk $
     --     LetIn "a" (Constructor "I" [Literal $ Integer 10]) $
-    --     LetIn "b" (Constructor "Just" [Variable $ BorrowedVariable "a"]) $
+    --     LetIn "b" (Constructor "Just" [Variable $ MovedVariable "a"]) $
     --         Atom (Literal $ Integer 1)
     --     )
     -- Binding "main" (Thunk $
@@ -27,41 +27,47 @@ program = [
     -- Binding "main" (Thunk $
     --     LetIn "a" (Constructor "I" [Literal $ Integer 10]) $
     --     LetIn "b" (Constructor "True" []) $
-    --     -- LetIn "c" (Thunk $ Atom (Variable $ BorrowedVariable "a")) $
-    --     LetIn "c" (Thunk $ FunctionApplication (ReferencedVariable "f") Unknown [Variable $ BorrowedVariable "b"]) $
-    --     -- LetIn "c" (Thunk $ FunctionApplication (BorrowedVariable "f") Unknown [Variable $ BorrowedVariable "b"]) $
-    --     -- LetIn "d" (Thunk $ Atom (Variable $ BorrowedVariable "a")) $
-    --     Atom (Variable $ BorrowedVariable "a")
+    --     -- LetIn "c" (Thunk $ Atom (Variable $ MovedVariable "a")) $
+    --     LetIn "c" (Thunk $ FunctionApplication (BorrowedVariable "f") Unknown [Variable $ MovedVariable "b"]) $
+    --     -- LetIn "c" (Thunk $ FunctionApplication (MovedVariable "f") Unknown [Variable $ MovedVariable "b"]) $
+    --     -- LetIn "d" (Thunk $ Atom (Variable $ MovedVariable "a")) $
+    --     Atom (Variable $ MovedVariable "a")
     -- )
 
     -- Ne sme delovati, ker je main toplevel (staticen)
-    -- Binding "main" (Thunk $ Atom $ Variable $ BorrowedVariable "x")
+    -- Binding "main" (Thunk $ Atom $ Variable $ MovedVariable "x")
 
     -- Binding "main" (Thunk $
-    --     LetIn "a" (Thunk $ LetIn "b" (Constructor "True" []) (Atom (Variable $ BorrowedVariable "b"))) $
-    --     Atom (Variable $ BorrowedVariable "a")
+    --     LetIn "a" (Thunk $ LetIn "b" (Constructor "True" []) (Atom (Variable $ MovedVariable "b"))) $
+    --     Atom (Variable $ MovedVariable "a")
     -- )
     
     -- Binding "main" (Thunk $
     --     LetIn "a" (Constructor "I" [Literal $ Integer 10]) $
     --     LetIn "result" (Thunk $
-    --     CaseOf (Atom $ Variable $ BorrowedVariable "a") [
-    --         AlgebraicAlternative "True" [] (Atom (Variable $ BorrowedVariable "a")),
-    --         DefaultAlternative (BorrowedVariable "x") (Atom (Variable $ BorrowedVariable "x"))
+    --     CaseOf (Atom $ Variable $ MovedVariable "a") [
+    --         AlgebraicAlternative "True" [] (Atom (Variable $ MovedVariable "a")),
+    --         DefaultAlternative (MovedVariable "x") (Atom (Variable $ MovedVariable "x"))
     --     ]) $
-    --     Atom (Variable $ BorrowedVariable "result")
+    --     Atom (Variable $ MovedVariable "result")
     -- )
     
+    -- Binding "main" (Thunk $
+    --     LetIn "f" (Function [MovedVariable "x", MovedVariable "y"] (Atom $ Literal $ Integer 13)) $
+    --     LetIn "a" (Constructor "Integer" [Literal $ Integer 2]) $
+    --     LetIn "b" (Constructor "Integer" [Literal $ Integer 3]) $
+    --     FunctionApplication (MovedVariable "f") Unknown [
+    --         -- Ne deluje, ce sta oba referenci - v tem primeru bi moral tudi
+    --         -- stars prevzeti odgovornost (lastnistvo)
+    --         Variable $ MovedVariable "a",
+    --         Variable $ MovedVariable "b"
+    --     ]
+    -- )
+
     Binding "main" (Thunk $
-        LetIn "f" (Function [BorrowedVariable "x", BorrowedVariable "y"] (Atom $ Literal $ Integer 13)) $
-        LetIn "a" (Constructor "Integer" [Literal $ Integer 2]) $
-        LetIn "b" (Constructor "Integer" [Literal $ Integer 3]) $
-        FunctionApplication (BorrowedVariable "f") Unknown [
-            -- Ne deluje, ce sta oba referenci - v tem primeru bi moral tudi
-            -- stars prevzeti odgovornost (lastnistvo)
-            Variable $ BorrowedVariable "a",
-            Variable $ BorrowedVariable "b"
-        ]
+        LetIn "a" (Constructor "Integer" [Literal $ Integer 3]) $
+        LetIn "b" (Constructor "Pair" [Variable $ MovedVariable "a"]) $
+        Atom (Variable $ MovedVariable "b")
     )
     ]
 

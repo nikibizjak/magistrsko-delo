@@ -7,6 +7,13 @@ import Data.List (find)
 type Constraint = (String, String)
 type Constraints = [Constraint]
 
+-- newtype OwnershipException = MoveException String
+
+-- TODO: Use the following definition for ownership inference. Since the `case`
+-- statement will *probably* require multiple passes, we will need to check if
+-- an error occurred.
+-- ownership :: [Binding] -> Either NameResolutionException Constraints
+
 ownership :: [Binding] -> Constraints
 ownership program =
     let
@@ -20,10 +27,12 @@ ownershipBinding (Binding name object) = ownershipObject name object
 ownershipObject :: String -> Object -> Constraints -> Constraints
 ownershipObject owner object constraints =
     case object of
-        Thunk expression -> ownershipExpression owner expression constraints
-        Constructor _ _ -> constraints -- TODO
-        Function _ _ -> constraints -- TODO
-        PartialApplication _ _ -> constraints -- TODO
+        Thunk expression ->
+            ownershipExpression owner expression constraints
+        Constructor _ arguments ->
+            foldr (ownershipAtom owner) constraints arguments
+        Function parameters body -> constraints -- TODO
+        PartialApplication function arguments -> constraints -- TODO
         BlackHole -> constraints
 
 ownershipExpression :: String -> Expression -> Constraints -> Constraints
@@ -59,8 +68,8 @@ ownershipAtom :: String -> Atom -> Constraints -> Constraints
 ownershipAtom owner atom constraints =
     case atom of
         Literal _ -> constraints
-        Variable (ReferencedVariable _) -> constraints
-        Variable (BorrowedVariable name) ->
+        Variable (BorrowedVariable _) -> constraints
+        Variable (MovedVariable name) ->
             case findOwner constraints name of
                 -- Everything is fine, the variable doesn't have an owner. We
                 -- can proceed.

@@ -6,8 +6,8 @@ newtype Literal
     deriving (Show, Eq)
 
 data Variable
-    = BorrowedVariable String
-    | ReferencedVariable String
+    = MovedVariable String
+    | BorrowedVariable String
     deriving (Show, Eq)
 
 data Atom

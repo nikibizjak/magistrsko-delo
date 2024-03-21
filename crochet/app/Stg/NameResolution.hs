@@ -16,11 +16,11 @@ instance NameResolution Literal where
     nameResolution _ _ = Right ()
 
 instance NameResolution Variable where
-    nameResolution environment (BorrowedVariable name) =
+    nameResolution environment (MovedVariable name) =
         if name `elem` environment
             then Right ()
             else Left (NameResolutionException $ "Undefined variable '" ++ name ++ "'.")
-    nameResolution environment (ReferencedVariable name) =
+    nameResolution environment (BorrowedVariable name) =
         if name `elem` environment
             then Right ()
             else Left (NameResolutionException $ "Undefined variable '" ++ name ++ "'.")
@@ -68,8 +68,8 @@ instance NameResolution Binding where
 name :: Variable -> String
 name variable =
     case variable of
+        MovedVariable name -> name
         BorrowedVariable name -> name
-        ReferencedVariable name -> name
 
 names :: [Variable] -> [String]
 names = map name

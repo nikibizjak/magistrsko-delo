@@ -14,8 +14,8 @@ instance FreeVariables Literal where
   freeVariables (Integer _) = Set.empty
 
 instance FreeVariables Variable where
-  freeVariables (BorrowedVariable v) = Set.singleton v
-  freeVariables (ReferencedVariable v) = Set.empty
+  freeVariables (MovedVariable v) = Set.singleton v
+  freeVariables (BorrowedVariable v) = Set.empty
 
 instance FreeVariables Atom where
   freeVariables (Variable v) = freeVariables v

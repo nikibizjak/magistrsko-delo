@@ -9,8 +9,8 @@ instance Pretty Literal where
    pretty (Integer n) = show n
 
 instance Pretty Variable where
-   pretty (BorrowedVariable v) = v
-   pretty (ReferencedVariable v) = '&' : v
+   pretty (MovedVariable v) = v
+   pretty (BorrowedVariable v) = '&' : v
 
 instance Pretty Atom where
    pretty (Variable v) = pretty v
