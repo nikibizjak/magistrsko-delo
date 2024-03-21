@@ -65,8 +65,9 @@ instance NameResolution Object where
   nameResolution environment (Function parameters body) =
     nameResolution (names parameters ++ environment) body
   nameResolution environment (PartialApplication function arguments) =
-    -- TODO: Implement this
-    Left (NameResolutionException "Not implemented!")
+    case nameResolution environment function of
+        Left exception -> Left exception
+        Right _ -> nameResolutionMultiple environment arguments
   nameResolution environment (Constructor _ arguments) = nameResolutionMultiple environment arguments
   nameResolution environment (Thunk expression) = nameResolution environment expression
   nameResolution environment BlackHole = Right ()
