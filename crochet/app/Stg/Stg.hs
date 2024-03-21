@@ -25,7 +25,10 @@ data Expression
     | FunctionApplication Variable FunctionArity [Atom]
     | PrimitiveOperation PrimitiveOperation [Atom]
     | LetIn String Object Expression
-    -- Missing: LetRec, which is not implemented in the original paper
+    -- LetRec wasn't actually implemented in the original paper, but we will
+    -- need to implement it, because we will want to study cycles (and infinite
+    -- lists, etc.)
+    | LetRec [(String, Object)] Expression
     | CaseOf Expression [Alternative]
     deriving (Show, Eq)
 
