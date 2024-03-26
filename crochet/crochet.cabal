@@ -13,6 +13,8 @@ executable crochet
         Stg.Ownership
         Stg.FreeVariables
         Stg.NameResolution
+        Stg.MoveCheck
+        Stg.BorrowCheck
         Stg.Interpreter
         Exception
     build-depends:

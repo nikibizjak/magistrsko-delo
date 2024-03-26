@@ -5,6 +5,8 @@ import Stg.Pretty
 import Stg.Ownership
 import Stg.FreeVariables
 import Stg.NameResolution
+import Stg.MoveCheck
+import Stg.BorrowCheck
 
 program :: Program
 program = [
@@ -41,7 +43,7 @@ program = [
     --     LetIn "a" (Thunk $ LetIn "b" (Constructor "True" []) (Atom (Variable $ MovedVariable "b"))) $
     --     Atom (Variable $ MovedVariable "a")
     -- )
-    
+
     -- Binding "main" (Thunk $
     --     LetIn "a" (Constructor "I" [Literal $ Integer 10]) $
     --     LetIn "result" (Thunk $
@@ -51,7 +53,7 @@ program = [
     --     ]) $
     --     Atom (Variable $ MovedVariable "result")
     -- )
-    
+
     -- Binding "main" (Thunk $
     --     LetIn "f" (Function [MovedVariable "x", MovedVariable "y"] (Atom $ Literal $ Integer 13)) $
     --     LetIn "a" (Constructor "Integer" [Literal $ Integer 2]) $
@@ -64,10 +66,34 @@ program = [
     --     ]
     -- )
 
+    -- Binding "main" (Thunk $
+    --     LetIn "a" (Constructor "Integer" [Literal $ Integer 3]) $
+    --     -- LetIn "b" (Constructor "Pair" [Variable $ MovedVariable "a", Variable $ MovedVariable "a"]) $
+    --     LetIn "b" (Thunk $ Atom $ Variable $ MovedVariable "a") $
+    --     LetIn "c" (Thunk $ Atom $ Variable $ MovedVariable "a") $
+    --     Atom (Variable $ MovedVariable "b")
+    -- )
+    -- Binding "main" (Thunk $
+    --     LetRec [
+    --         ("b", Constructor "Pair" [Variable $ MovedVariable "a"]),
+    --         ("a", Constructor "Integer" [Literal $ Integer 3])] $
+    --     Atom (Variable $ MovedVariable "b")
+    -- )
+
+    -- Binding "x" (Thunk $ Atom $ Literal $ Integer 1),
     Binding "main" (Thunk $
-        LetIn "a" (Constructor "Integer" [Literal $ Integer 3]) $
-        LetIn "b" (Constructor "Pair" [Variable $ MovedVariable "a"]) $
-        Atom (Variable $ MovedVariable "b")
+        LetIn "a" (Thunk $ Atom $ Literal $ Integer 0) $
+        LetIn "b" (Thunk $ Atom $ Literal $ Integer 1) $
+        LetIn "x" (Constructor "Nil" []) $
+        LetIn "result" (Thunk $
+        CaseOf (Atom $ Variable $ MovedVariable "x") [
+            AlgebraicAlternative "Cons" [] (Atom $ Variable $ MovedVariable "a"),
+            AlgebraicAlternative "Nil" [] (Atom $ Variable $ MovedVariable "b")
+        ]) (
+            LetIn "m" (Thunk $ Atom $ Variable $ MovedVariable "result") $
+            -- LetIn "n" (Thunk $ Atom $ Variable $ MovedVariable "x") $
+            Atom (Variable $ MovedVariable "m")
+        )
     )
     ]
 
@@ -79,4 +105,19 @@ main = do
     -- Perform name resolution - find undefined variables.
     case nameResolutionProgram program of
         Left (NameResolutionException exception) -> putStrLn exception
-        Right _ -> print $ ownership program
+        Right _ ->
+
+            -- Perform move checking - find invalid moves
+            case moveCheckProgram program of
+                Left (MoveCheckException exception) -> putStrLn exception
+                Right _ -> do
+
+                    putStrLn "Move check passed."
+
+                    case borrowCheckProgram program of
+                        Left (BorrowCheckException exception) -> putStrLn exception
+                        Right _ ->
+
+                            putStrLn "Borrow check passed."
+
+            
