@@ -81,43 +81,60 @@ program = [
     -- )
 
     -- Binding "x" (Thunk $ Atom $ Literal $ Integer 1),
+    -- Binding "main" (Thunk $
+    --     LetIn "a" (Thunk $ Atom $ Literal $ Integer 0) $
+    --     LetIn "b" (Thunk $ Atom $ Literal $ Integer 1) $
+    --     LetIn "x" (Constructor "Nil" []) $
+    --     LetIn "result" (Thunk $
+    --     CaseOf (Atom $ Variable $ MovedVariable "x") [
+    --         AlgebraicAlternative "Cons" [] (Atom $ Variable $ MovedVariable "a"),
+    --         AlgebraicAlternative "Nil" [] (Atom $ Variable $ MovedVariable "b")
+    --     ]) (
+    --         LetIn "m" (Thunk $ Atom $ Variable $ MovedVariable "result") $
+    --         -- LetIn "n" (Thunk $ Atom $ Variable $ MovedVariable "x") $
+    --         Atom (Variable $ MovedVariable "m")
+    --     )
+    -- )
+
     Binding "main" (Thunk $
         LetIn "a" (Thunk $ Atom $ Literal $ Integer 0) $
         LetIn "b" (Thunk $ Atom $ Literal $ Integer 1) $
-        LetIn "x" (Constructor "Nil" []) $
-        LetIn "result" (Thunk $
-        CaseOf (Atom $ Variable $ MovedVariable "x") [
-            AlgebraicAlternative "Cons" [] (Atom $ Variable $ MovedVariable "a"),
-            AlgebraicAlternative "Nil" [] (Atom $ Variable $ MovedVariable "b")
-        ]) (
-            LetIn "m" (Thunk $ Atom $ Variable $ MovedVariable "result") $
-            -- LetIn "n" (Thunk $ Atom $ Variable $ MovedVariable "x") $
-            Atom (Variable $ MovedVariable "m")
-        )
+        -- Atom (Variable $ BorrowedVariable "c")
+        Atom $ Literal $ Integer 2
     )
     ]
 
-main :: IO ()
+-- main :: IO ()
+-- main = do
+--     -- Print the program
+--     print $ map pretty program
+
+--     -- Perform name resolution - find undefined variables.
+--     case nameResolutionProgram program of
+--         Left (NameResolutionException exception) ->
+--             putStrLn $ "[ ] Name resolution exception: " ++ exception
+--         Right _ -> do
+--             putStrLn "[x] Name resolution"
+
+--             -- Perform move checking - find invalid moves
+--             case moveCheckProgram program of
+--                 Left (MoveCheckException exception) ->
+--                     putStrLn $ "[ ] Move check exception: " ++ exception
+--                 Right _ -> do
+
+--                     putStrLn "[x] Move check"
+
+--                     case borrowCheckProgram program of
+--                         Left (BorrowCheckException exception) ->
+--                             putStrLn $ "[ ] Borrow check exception: " ++ exception
+--                         Right (lifetimes, equations) -> do
+--                             putStrLn "[x] Borrow check"
+--                             print lifetimes
+--                             print equations
+
 main = do
-    -- Print the program
-    print $ map pretty program
-
-    -- Perform name resolution - find undefined variables.
-    case nameResolutionProgram program of
-        Left (NameResolutionException exception) -> putStrLn exception
-        Right _ ->
-
-            -- Perform move checking - find invalid moves
-            case moveCheckProgram program of
-                Left (MoveCheckException exception) -> putStrLn exception
-                Right _ -> do
-
-                    putStrLn "Move check passed."
-
-                    case borrowCheckProgram program of
-                        Left (BorrowCheckException exception) -> putStrLn exception
-                        Right _ ->
-
-                            putStrLn "Borrow check passed."
-
-            
+    -- print $ borrowCheckItem (LetIn "a" (Thunk $ Atom $ Literal $ Integer 0) $ LetIn "b" (Thunk $ Atom $ Literal $ Integer 1) $ Atom $ Variable $ BorrowedVariable "b")
+    print $ borrowCheckItem (LetIn "a" (Thunk $ Atom $ Literal $ Integer 0) $ LetIn "b" (Thunk $ Atom $ Literal $ Integer 1) $ Atom $ Literal $ Integer 2)
+    -- print $ borrowCheckItem (LetIn "a" (Thunk $ Atom $ Literal $ Integer 0) $ LetIn "b" (Thunk $ Atom $ Literal $ Integer 1) $ FunctionApplication (BorrowedVariable "f") Unknown [])
+    -- print $ borrowCheckItem (LetIn "f" (Function [BorrowedVariable "x", BorrowedVariable "y"] (Atom $ Variable $ BorrowedVariable "x")) $ Atom $ Literal $ Integer 2)
+    
