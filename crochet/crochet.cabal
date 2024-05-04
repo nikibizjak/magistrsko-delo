@@ -9,6 +9,9 @@ executable crochet
     main-is:          Main.hs
     other-modules:
         Stg.Stg
+        Stg.Parser
+        Stg.Parser.Internal
+        Stg.Parser.Utils
         Stg.Pretty
         Stg.Ownership
         Stg.FreeVariables
