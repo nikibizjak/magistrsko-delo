@@ -44,7 +44,7 @@ instance Pretty Alternative where
    pretty (AlgebraicAlternative constructor variables expression) =
       if null variables
       then "| " ++ constructor ++ " -> " ++ pretty expression
-      else "| " ++ constructor ++ unwords (map pretty variables) ++ " -> " ++ pretty expression
+      else "| " ++ constructor ++ " " ++ unwords (map pretty variables) ++ " -> " ++ pretty expression
    pretty (DefaultAlternative variable expression) =
       "| " ++ pretty variable ++ " -> " ++ pretty expression
 

@@ -56,10 +56,30 @@ letIn =
     spaces >> word "in" >> spaces >> expression >>= \body ->
       return (LetIn name value body)
 
+defaultAlternative :: Parser Alternative
+defaultAlternative =
+    variable >>= \name ->
+    spaces1 >> word "->" >> spaces >> expression >>= \expression ->
+    return (DefaultAlternative name expression)
+
+algebraicAlternative :: Parser Alternative
+algebraicAlternative =
+    identifier >>= \constructor ->
+    many (spaces1 >> variable) >>= \parameters ->
+    spaces >> word "->" >> spaces >> expression >>= \body ->
+    return (AlgebraicAlternative constructor parameters body)
+
+alternative :: Parser Alternative
+alternative =
+    exactly '|' >> spaces >>
+    oneOf [ algebraicAlternative, defaultAlternative ]
+
 caseOf :: Parser Expression
 caseOf =
   word "case" >> spaces1 >> expression >>= \scrutinee ->
-    spaces >> word "of" >> spaces >> return (CaseOf scrutinee [])
+    spaces1 >> word "of" >> spaces1 >>
+    many1 (spaces >> alternative) >>= \alternatives ->
+    return (CaseOf scrutinee alternatives)
 
 -- If only one atom, then this is an atomic expression, otherwise, this is a
 -- function application.
