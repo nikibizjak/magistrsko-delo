@@ -1,4 +1,4 @@
-module Stg.Parser.Internal where
+module Stg.Parser.Internal (parse, ParserException(..)) where
 
 import Stg.Parser.Utils
 import Stg.Stg
@@ -189,6 +189,3 @@ parse input =
   case program input of
     Just (result, []) -> Right result
     _ -> Left $ ParserException "Invalid input"
-
-parseExpression :: String -> Either ParserException Expression
-parseExpression input = Right $ Atom $ Literal $ Integer 0

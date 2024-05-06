@@ -1,3 +1,3 @@
-module Stg.Parser where
+module Stg.Parser (parse, ParserException(..)) where
 
-import Language.Parser.Internal
+import Stg.Parser.Internal

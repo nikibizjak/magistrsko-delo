@@ -3,7 +3,7 @@ module Main where
 import System.Directory.Internal.Prelude ( getArgs, readFile )
 
 import Stg.Stg
-import Stg.Parser.Internal
+import Stg.Parser
 import Stg.Pretty
 import Stg.Ownership
 import Stg.FreeVariables

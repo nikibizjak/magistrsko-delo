@@ -9,9 +9,9 @@ executable crochet
     main-is:          Main.hs
     other-modules:
         Stg.Stg
-        Stg.Parser
         Stg.Parser.Internal
         Stg.Parser.Utils
+        Stg.Parser
         Stg.Pretty
         Stg.Ownership
         Stg.FreeVariables
@@ -19,7 +19,6 @@ executable crochet
         Stg.MoveCheck
         Stg.BorrowCheck
         Stg.Interpreter
-        Exception
     build-depends:
         base == 4.17.2.1,
         directory == 1.3.7.1,
