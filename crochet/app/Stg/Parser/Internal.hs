@@ -24,7 +24,12 @@ variable =
     -- Must not be a reserved word!
     if name `elem` reservedWords
       then fail
-      else return $ MovedVariable name
+      else return name
+
+borrow :: Parser Atom
+borrow =
+  exactly '&' >> spaces >> variable >>= \name ->
+    return $ Borrow (Variable name)
 
 primitiveInteger :: Parser Int
 primitiveInteger =
@@ -42,7 +47,9 @@ literal = integer
 atom :: Parser Atom
 atom =
   oneOf
-    [ variable >>= \value -> return $ Variable value,
+    [ 
+      borrow,
+      variable >>= \value -> return $ Variable value,
       literal >>= \value -> return $ Literal value
     ]
 

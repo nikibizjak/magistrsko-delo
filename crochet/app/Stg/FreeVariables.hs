@@ -13,18 +13,16 @@ class FreeVariables a where
 instance FreeVariables Literal where
   freeVariables (Integer _) = Set.empty
 
-instance FreeVariables Variable where
-  freeVariables (MovedVariable v) = Set.singleton v
-  freeVariables (BorrowedVariable v) = Set.empty
-
 instance FreeVariables Atom where
-  freeVariables (Variable v) = freeVariables v
+  freeVariables (Variable v) =
+    Set.singleton v
   freeVariables (Literal l) = freeVariables l
+  freeVariables (Borrow variable) = freeVariables variable
 
 instance FreeVariables Expression where
   freeVariables (Atom atom) = freeVariables atom
   freeVariables (FunctionApplication function arity arguments) =
-    Set.union (freeVariables function) (Set.unions (map freeVariables arguments))
+    Set.insert function (Set.unions (map freeVariables arguments))
   freeVariables (PrimitiveOperation operation arguments) =
     Set.unions (map freeVariables arguments)
   freeVariables (LetIn name value body) =
@@ -51,7 +49,7 @@ instance FreeVariables Object where
   freeVariables (Function variables expression) =
     Set.difference (freeVariables expression) (namesSet variables)
   freeVariables (PartialApplication function arguments) =
-    Set.union (freeVariables function) (Set.unions (map freeVariables arguments))
+    Set.insert function (Set.unions (map freeVariables arguments))
   freeVariables (Constructor constructor arguments) =
     Set.unions (map freeVariables arguments)
   freeVariables (Thunk expression) = freeVariables expression

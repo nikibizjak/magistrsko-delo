@@ -68,15 +68,17 @@ ownershipAtom :: String -> Atom -> Constraints -> Constraints
 ownershipAtom owner atom constraints =
     case atom of
         Literal _ -> constraints
-        Variable (BorrowedVariable _) -> constraints
-        Variable (MovedVariable name) ->
-            case findOwner constraints name of
-                -- Everything is fine, the variable doesn't have an owner. We
-                -- can proceed.
-                Nothing -> (owner, name) : constraints
-                -- The variable has already been moved. It can't be moved again!
-                Just (foundOwner, _) ->
-                    error ("Can not move variable '" ++ name ++ "' to variable '" ++ owner ++ "' because it has already been moved to variable '" ++ foundOwner ++ "'.")
+        Variable name -> constraints
+        -- TODO: Fix this
+        -- Variable (BorrowedVariable _) -> constraints
+        -- Variable (MovedVariable name) ->
+        --     case findOwner constraints name of
+        --         -- Everything is fine, the variable doesn't have an owner. We
+        --         -- can proceed.
+        --         Nothing -> (owner, name) : constraints
+        --         -- The variable has already been moved. It can't be moved again!
+        --         Just (foundOwner, _) ->
+        --             error ("Can not move variable '" ++ name ++ "' to variable '" ++ owner ++ "' because it has already been moved to variable '" ++ foundOwner ++ "'.")
 
 findOwner constraints name =
     find (\(owner, ownee) -> name == ownee) constraints

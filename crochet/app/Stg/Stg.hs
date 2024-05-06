@@ -5,14 +5,12 @@ newtype Literal
     -- Missing: Double, which is implemented in the original paper
     deriving (Show, Eq)
 
-data Variable
-    = MovedVariable String
-    | BorrowedVariable String
-    deriving (Show, Eq)
+type Variable = String
 
 data Atom
     = Variable Variable
     | Literal Literal
+    | Borrow Atom
     deriving (Show, Eq)
 
 data FunctionArity

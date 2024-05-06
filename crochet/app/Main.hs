@@ -8,7 +8,6 @@ import Stg.Pretty
 import Stg.Ownership
 import Stg.FreeVariables
 import Stg.NameResolution
-import Stg.TypeInference (inferTypeItem)
 import Stg.MoveCheck
 import Stg.BorrowCheck
 
@@ -36,18 +35,21 @@ execute contents =
                 Right _ -> do
                     putStrLn "[x] Name resolution"
 
-                    -- Perform move checking - find invalid moves
-                    case moveCheckProgram program of
-                        Left (MoveCheckException exception) ->
-                            putStrLn $ "[ ] Move check exception: " ++ exception
-                        Right _ -> do
+                    -- Perform borrow checking - find use after free errors.
+                    case borrowCheckProgram program of
+                        Left (BorrowCheckException exception) ->
+                            putStrLn $ "[ ] Borrow check exception: " ++ exception
+                        Right (lifetimes, equations) -> do
+                            putStrLn "[x] Borrow check"
+                            print lifetimes
+                            print equations
 
-                            putStrLn "[x] Move check"
+                            -- Perform move checking - find invalid moves
+                            case moveCheckProgram program of
+                                Left (MoveCheckException exception) ->
+                                    putStrLn $ "[ ] Move check exception: " ++ exception
+                                Right _ -> do
 
-                            case borrowCheckProgram program of
-                                Left (BorrowCheckException exception) ->
-                                    putStrLn $ "[ ] Borrow check exception: " ++ exception
-                                Right (lifetimes, equations) -> do
-                                    putStrLn "[x] Borrow check"
-                                    print lifetimes
-                                    print equations
+                                    putStrLn "[x] Move check"
+
+                            

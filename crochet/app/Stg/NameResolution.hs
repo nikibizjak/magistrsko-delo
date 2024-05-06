@@ -12,27 +12,27 @@ nameResolutionProgram program =
     let environment = map (\(Binding name object) -> name) program in
         nameResolutionMultiple environment program
 
+findVariable :: [String] -> String -> Either NameResolutionException ()
+findVariable environment name =
+    if name `elem` environment
+        then Right ()
+        else Left (NameResolutionException $ "Undefined variable '" ++ name ++ "'.")
+
 instance NameResolution Literal where
     nameResolution _ _ = Right ()
 
-instance NameResolution Variable where
-    nameResolution environment (MovedVariable name) =
-        if name `elem` environment
-            then Right ()
-            else Left (NameResolutionException $ "Undefined variable '" ++ name ++ "'.")
-    nameResolution environment (BorrowedVariable name) =
-        if name `elem` environment
-            then Right ()
-            else Left (NameResolutionException $ "Undefined variable '" ++ name ++ "'.")
-
 instance NameResolution Atom where
-    nameResolution environment (Literal literal) = nameResolution environment literal
-    nameResolution environment (Variable variable) = nameResolution environment variable
+    nameResolution environment (Literal literal) =
+        nameResolution environment literal
+    nameResolution environment (Variable name) =
+        findVariable environment name
+    nameResolution environment (Borrow variable) =
+        nameResolution environment variable
 
 instance NameResolution Expression where
     nameResolution environment (Atom atom) = nameResolution environment atom
     nameResolution environment (FunctionApplication function _ arguments) =
-        case nameResolution environment function of
+        case findVariable environment function of
             Left exception -> Left exception
             Right _ -> nameResolutionMultiple environment arguments
     nameResolution environment (PrimitiveOperation _ arguments) =
@@ -65,7 +65,7 @@ instance NameResolution Object where
   nameResolution environment (Function parameters body) =
     nameResolution (names parameters ++ environment) body
   nameResolution environment (PartialApplication function arguments) =
-    case nameResolution environment function of
+    case findVariable environment function of
         Left exception -> Left exception
         Right _ -> nameResolutionMultiple environment arguments
   nameResolution environment (Constructor _ arguments) = nameResolutionMultiple environment arguments
@@ -76,10 +76,7 @@ instance NameResolution Binding where
   nameResolution environment (Binding name value) = nameResolution (name : environment) value
 
 name :: Variable -> String
-name variable =
-    case variable of
-        MovedVariable name -> name
-        BorrowedVariable name -> name
+name variable = variable
 
 names :: [Variable] -> [String]
 names = map name

@@ -36,9 +36,11 @@ instance MoveCheck Expression where
         case expression of
             Atom atom -> moveCheck context (Just expression) atom
             FunctionApplication function arity arguments ->
-                case moveCheck context (Just expression) function of
-                    Left exception -> Left exception
-                    Right context' -> moveCheckSequential context (Just expression) arguments
+                -- TODO: Fix this
+                -- case moveCheck context (Just expression) function of
+                --     Left exception -> Left exception
+                --     Right context' -> moveCheckSequential context (Just expression) arguments
+                moveCheckSequential context (Just expression) arguments
             PrimitiveOperation operation arguments ->
                 moveCheckSequential context (Just expression) arguments
             LetIn name value body ->
@@ -68,27 +70,29 @@ instance MoveCheck Alternative where
         moveCheck context owner body
 
 instance MoveCheck Atom where
-    moveCheck context owner (Variable variable) = moveCheck context owner variable
+    moveCheck context owner (Variable variable) =
+        Right context
+        -- moveCheck context owner variable
     moveCheck context owner (Literal _) = Right context
 
-instance MoveCheck Variable where
-    moveCheck context owner (MovedVariable name) =
-        -- The important part: Check if the variable is already borrowed. We can
-        -- assume that the name resolution step has already been completed and
-        -- therefore we don't need to check whether the variable exists or not.
-        case lookup name context of
-            -- This is fine, the variable has not been moved yet.
-            Nothing ->
-                case owner of
-                    Nothing -> Right context
-                    Just ownerName -> Right $ (name, ownerName) : context
-            -- There exists a move of the variable in current move context,
-            -- which means that this move is invalid. Throw an exception.
-            Just ownerName ->
-                -- Left (MoveCheckException $ "Variable '" ++ name ++ "' has already been moved to " ++ pretty ownerName ++ ".")
-                Left (MoveCheckException $ "Variable '" ++ name ++ "' has already been moved.")
+-- instance MoveCheck Variable where
+--     moveCheck context owner (MovedVariable name) =
+--         -- The important part: Check if the variable is already borrowed. We can
+--         -- assume that the name resolution step has already been completed and
+--         -- therefore we don't need to check whether the variable exists or not.
+--         case lookup name context of
+--             -- This is fine, the variable has not been moved yet.
+--             Nothing ->
+--                 case owner of
+--                     Nothing -> Right context
+--                     Just ownerName -> Right $ (name, ownerName) : context
+--             -- There exists a move of the variable in current move context,
+--             -- which means that this move is invalid. Throw an exception.
+--             Just ownerName ->
+--                 -- Left (MoveCheckException $ "Variable '" ++ name ++ "' has already been moved to " ++ pretty ownerName ++ ".")
+--                 Left (MoveCheckException $ "Variable '" ++ name ++ "' has already been moved.")
 
-    moveCheck context owner (BorrowedVariable name) = Right context
+--     moveCheck context owner (BorrowedVariable name) = Right context
 
 instance MoveCheck Binding where
   moveCheck context owner (Binding name value) = moveCheck context owner value

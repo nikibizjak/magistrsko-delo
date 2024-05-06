@@ -42,13 +42,13 @@ fresh = do
     return (Lifetime n)
 
 class BorrowCheck a where
-  borrowCheck :: Context -> a -> State Int (Either BorrowCheckException (Lifetime, [Equation]))
+  borrowCheck :: Context -> Lifetime -> a -> State Int (Either BorrowCheckException (Lifetime, [Equation]))
 
 todo = do
     return $ Left (BorrowCheckException "Not implemented yet")
 
 instance BorrowCheck Object where
-    borrowCheck context (Function parameters body) = do
+    borrowCheck context parent (Function parameters body) = do
         -- let f = FUN( p_1, ..., p_n -> body )
         -- in  expression
 
@@ -60,103 +60,118 @@ instance BorrowCheck Object where
 
         -- A function FUN(&x &y -> x) has a general type of: &'a T -> &'b T -> &'a T
         todo
-    borrowCheck context (PartialApplication function arguments) = todo
-    borrowCheck context (Constructor name arguments) = todo
+    borrowCheck context parent (PartialApplication function arguments) = todo
+    borrowCheck context parent (Constructor name arguments) = todo
 
-    borrowCheck context (Thunk expression) = do
+    borrowCheck context parent (Thunk expression) = do
         lifetime <- fresh
-        result <- borrowCheck context expression
+        result <- borrowCheck context lifetime expression
         case result of
             Left exception -> return $ Left exception
             Right (expressionLifetime, equations) ->
-                return $ Right (lifetime, Outlives lifetime expressionLifetime : equations)
+                let
+                    equations' =
+                        -- Outlives parent lifetime :
+                        Outlives lifetime expressionLifetime :
+                        equations
+                in
+                    return $ Right (lifetime, equations')
 
-    borrowCheck context BlackHole = do
+    borrowCheck context parent BlackHole = do
         lifetime <- fresh
-        return $ Right (lifetime, [])
+        return $ Right (lifetime, [ Outlives parent lifetime ])
 
 instance BorrowCheck Expression where
-    borrowCheck context (Atom atom) = borrowCheck context atom
-    borrowCheck context (FunctionApplication function arity arguments) = todo
+    borrowCheck context parent (Atom atom) = borrowCheck context parent atom
+    
+    borrowCheck context parent (FunctionApplication function arity arguments) = do
+        lifetime <- fresh
 
-    borrowCheck context (PrimitiveOperation operation arguments) = todo
+        result <- borrowCheckSequential context parent arguments
+        case result of
+            Left exception -> return $ Left exception
+            Right (lifetimes, equations) ->
+                let
+                    equations' = Outlives parent lifetime :
+                        map (Outlives lifetime) lifetimes ++
+                        equations
+                in
+                    return $ Right (lifetime, equations')
 
-    borrowCheck context (LetIn name value body) = do
+    borrowCheck context parent (PrimitiveOperation operation arguments) = do
+        lifetime <- fresh
+
+        result <- borrowCheckSequential context parent arguments
+        case result of
+            Left exception -> return $ Left exception
+            Right (lifetimes, equations) ->
+                let
+                    equations' = Outlives parent lifetime :
+                        map (Outlives lifetime) lifetimes ++
+                        equations
+                in
+                    return $ Right (lifetime, equations')
+
+    borrowCheck context parent (LetIn name value body) = do
         -- Lifetime for the entire let expression
         lifetimeLet <- fresh
 
-        case value of
+        -- Lifetime for the bound name
+        lifetimeDefinition <- fresh
+        let context' = (name, lifetimeDefinition) : context
 
-            Thunk expression -> do
+        resultBody <- borrowCheck context' parent body
+        case resultBody of
+            Left exception -> return $ Left exception
+            Right (lifetimeBody, equationsBody) ->
+                let
+                    newEquations = [
+                        Outlives parent lifetimeLet,                -- parent < let
+                        Outlives lifetimeLet lifetimeDefinition,    -- let < definition
+                        Outlives lifetimeBody lifetimeLet           -- body < let
+                        ]
+                in
+                return $ Right (lifetimeLet, newEquations ++ equationsBody)
 
-                -- Lifetime for the bound name
-                lifetimeDefinition <- fresh
-                let context' = (name, lifetimeDefinition) : context
-
-                resultBody <- borrowCheck context' body
-                case resultBody of
-                    Left exception -> return $ Left exception
-                    Right (lifetimeBody, equationsBody) ->
-                        return $ Right (lifetimeLet, Outlives lifetimeBody lifetimeLet : Outlives lifetimeLet lifetimeDefinition : equationsBody)
-
-            Function _ _ -> do
-
-                resultValue <- borrowCheck context value
-                case resultValue of
-                    Left exception -> return $ Left exception
-                    Right (lifetimeValue, equationsValue) -> do
-
-                        let context' = (name, lifetimeValue) : context
-
-                        resultBody <- borrowCheck context' body
-                        case resultBody of
-                            Left exception -> return $ Left exception
-                            Right (lifetimeBody, equationsBody) ->
-                                return $ Right (lifetimeLet, Outlives lifetimeBody lifetimeLet : Outlives lifetimeLet lifetimeValue : (equationsValue ++ equationsBody))
-
-            PartialApplication function arguments -> todo
-            Constructor name arguments -> todo
-            BlackHole -> todo
-
-    borrowCheck context (LetRec definitions body) = todo
-    borrowCheck context (CaseOf scrutinee alternatives) = todo
+    borrowCheck context parent (LetRec definitions body) = todo
+    borrowCheck context parent (CaseOf scrutinee alternatives) = todo
 
 instance BorrowCheck Alternative where
-    borrowCheck context (AlgebraicAlternative constructor variables body) = todo
-    borrowCheck context (DefaultAlternative name body) = todo
+    borrowCheck context parent (AlgebraicAlternative constructor variables body) = todo
+    borrowCheck context parent (DefaultAlternative name body) = todo
 
 instance BorrowCheck Atom where
-    borrowCheck context (Variable variable) =
-        borrowCheck context variable
-    borrowCheck context (Literal _) = do
+    borrowCheck context parent (Variable name) =
+        case lookup name context of
+            Just lifetime -> return $ Right (lifetime, [])
+            Nothing -> throw $ "Variable '" ++ name ++ "' not in context."
+    borrowCheck context parent (Literal _) = do
         lifetime <- fresh
         return $ Right (lifetime, [])
-
-instance BorrowCheck Variable where
-    borrowCheck context (MovedVariable name) = todo
-    borrowCheck context (BorrowedVariable name) =
-        case lookup name context of
-            Nothing -> throw $ "Borrowed variable '" ++ name ++ "' not in context."
-            Just lifetime -> return $ Right (lifetime, [])
+    borrowCheck context parent (Borrow variable) = do
+        result <- borrowCheck context parent variable
+        case result of
+            Left exception -> return $ Left exception
+            Right (lifetime, equations) -> return $ Right (lifetime, [])
 
 instance BorrowCheck Binding where
-  borrowCheck context (Binding name value) = do
-    result <- borrowCheck ((name, staticLifetime) : context) value
+  borrowCheck context parent (Binding name value) = do
+    result <- borrowCheck ((name, staticLifetime) : context) parent value
     case result of
         Left exception -> return $ Left exception
         Right (lifetime, equations) ->
             return $ Right (lifetime, Outlives staticLifetime lifetime : equations)
 
 -- borrowCheckSequential :: (BorrowCheck a) => Context -> [a] -> State Int (Either BorrowCheckException ([Lifetime], [Equation]))
-borrowCheckSequential context items =
+borrowCheckSequential context parent items =
     case items of
         [] -> return $ Right ([], [])
         item : rest -> do
-            result <- borrowCheck context item
+            result <- borrowCheck context parent item
             case result of
                 Left exception -> return $ Left exception
                 Right (lifetime, equations) -> do
-                    restResult <- borrowCheckSequential context rest
+                    restResult <- borrowCheckSequential context parent rest
                     case restResult of
                         Left exception -> return $ Left exception
                         Right (restLifetimes, restEquations) ->
@@ -171,7 +186,7 @@ borrowCheckProgram program =
         context = map (\name -> (name, staticLifetime)) names
 
         -- Actually do the real borrow checking
-        borrowCheckStateful = borrowCheckSequential context program
+        borrowCheckStateful = borrowCheckSequential context staticLifetime program
         result = evalState borrowCheckStateful 1
     in
         case result of
@@ -184,7 +199,7 @@ borrowCheckProgram program =
 borrowCheckItem :: BorrowCheck a => a -> Either BorrowCheckException (Lifetime, [Equation])
 borrowCheckItem a =
     let
-        borrowCheckStateful = borrowCheck [] a
+        borrowCheckStateful = borrowCheck [] staticLifetime a
         result = evalState borrowCheckStateful 1
     in
         case result of
