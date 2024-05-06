@@ -28,11 +28,6 @@ instance Pretty Expression where
       pretty operation ++ " " ++ unwords (map pretty arguments)
    pretty (LetIn name value body) =
       "let " ++ name ++ " = " ++ pretty value ++ " in " ++ pretty body
-   pretty (LetRec bindings body) =
-      let
-         binds = map (\(name, value) -> name ++ " = " ++ pretty value) bindings
-      in
-         "letrec " ++ intercalate "; " binds ++ " in " ++ pretty body
    pretty (CaseOf scrutinee alternatives) =
       -- The fast curry paper assumes that the number of alternatives is > 0.
       "case "  ++ pretty scrutinee ++ " of " ++ unwords (map pretty alternatives)

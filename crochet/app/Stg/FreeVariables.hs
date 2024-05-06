@@ -27,15 +27,6 @@ instance FreeVariables Expression where
     Set.unions (map freeVariables arguments)
   freeVariables (LetIn name value body) =
     Set.delete name (Set.union (freeVariables value) (freeVariables body))
-  freeVariables (LetRec bindings body) =
-    let
-      (boundNames, boundObjects) = unzip bindings
-      definedNames = Set.fromList boundNames
-
-      freeVariablesBindings = Set.unions (map freeVariables boundObjects)
-      freeVariablesBody = freeVariables body
-    in
-      Set.difference (Set.union freeVariablesBindings freeVariablesBody) definedNames
   freeVariables (CaseOf scrutinee alternatives) =
     Set.union (freeVariables scrutinee) (Set.unions (map freeVariables alternatives))
 

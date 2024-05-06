@@ -133,7 +133,6 @@ instance BorrowCheck Expression where
                 in
                 return $ Right (lifetimeLet, newEquations ++ equationsBody)
 
-    borrowCheck context parent (LetRec definitions body) = todo
     borrowCheck context parent (CaseOf scrutinee alternatives) = todo
 
 instance BorrowCheck Alternative where

@@ -48,10 +48,6 @@ instance MoveCheck Expression where
                     Left exception -> Left exception
                     Right context' ->
                         moveCheck context' (Just expression) body
-            LetRec definitions body ->
-                -- TODO: This one is a bit tricky as it involves finding cycles in a
-                -- graph. For now, we will only check the let expression.
-                todo
             CaseOf scrutinee alternatives ->
                 case moveCheck context (Just expression) scrutinee of
                     Left exception -> Left exception

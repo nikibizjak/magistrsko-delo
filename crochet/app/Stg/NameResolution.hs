@@ -41,15 +41,6 @@ instance NameResolution Expression where
         case nameResolution environment object of
             Left exception -> Left exception
             Right _ -> nameResolution (name : environment) body
-    nameResolution environment (LetRec bindings body) =
-        let
-            boundNames = map fst bindings
-            boundObjects = map snd bindings
-            environment' = boundNames ++ environment
-        in
-            case nameResolutionMultiple environment' boundObjects of
-                Left exception -> Left exception
-                Right _ -> nameResolution environment' body
     nameResolution environment (CaseOf scrutinee alternatives) =
         case nameResolution environment scrutinee of
             Left exception -> Left exception
