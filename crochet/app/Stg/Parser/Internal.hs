@@ -29,7 +29,7 @@ variable =
 borrow :: Parser Atom
 borrow =
   exactly '&' >> spaces >> variable >>= \name ->
-    return $ Borrow (Variable name)
+    return $ Borrow name
 
 primitiveInteger :: Parser Int
 primitiveInteger =

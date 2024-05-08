@@ -26,8 +26,8 @@ instance NameResolution Atom where
         nameResolution environment literal
     nameResolution environment (Variable name) =
         findVariable environment name
-    nameResolution environment (Borrow variable) =
-        nameResolution environment variable
+    nameResolution environment (Borrow name) =
+        findVariable environment name
 
 instance NameResolution Expression where
     nameResolution environment (Atom atom) = nameResolution environment atom

@@ -12,7 +12,7 @@ instance Pretty Literal where
 instance Pretty Atom where
    pretty (Variable v) = v
    pretty (Literal l) = pretty l
-   pretty (Borrow atom) = '&' : pretty atom
+   pretty (Borrow v) = '&' : v
 
 instance Pretty FunctionArity where
    pretty (Known n) = '^' : show n

@@ -10,7 +10,7 @@ type Variable = String
 data Atom
     = Variable Variable
     | Literal Literal
-    | Borrow Atom
+    | Borrow Variable
     deriving (Show, Eq)
 
 data FunctionArity
