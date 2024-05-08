@@ -61,8 +61,11 @@ isLineSeparator x = x `elem` "\n\r"
 lineSeparator :: Parser Char
 lineSeparator = satisfy isLineSeparator character
 
-space :: Parser Char
-space = satisfy isSpace character
+notLineSeparator :: Parser Char
+notLineSeparator = satisfy (not . isLineSeparator) character
+
+space :: Parser ()
+space = satisfy isSpace character >> return ()
 
 exactly :: Char -> Parser Char
 exactly expected = satisfy (== expected) character
@@ -80,29 +83,3 @@ many1 :: Parser a -> Parser [a]
 many1 parser =
     parser >>= \first ->
         many parser >>= \rest -> return (first : rest)
-
-lines :: Parser ()
-lines = many lineSeparator >> return ()
-
-lines1 :: Parser ()
-lines1 = many1 lineSeparator >> return ()
-
-spaces :: Parser ()
-spaces = many space >> return ()
-
-spaces1 :: Parser ()
-spaces1 = many1 space >> return ()
-
-isExactlySpace :: Char -> Bool
-isExactlySpace c = isSpace c && not (isLineSeparator c)
-
-exactlySpace :: Parser Char
-exactlySpace = satisfy isExactlySpace character
-
-exactlySpaces :: Parser ()
-exactlySpaces = many exactlySpace >> return ()
-
-grouping :: Parser b -> Parser b
-grouping parser =
-    exactly '(' >> spaces >> parser >>= \subexpression ->
-        spaces >> exactly ')' >> return subexpression

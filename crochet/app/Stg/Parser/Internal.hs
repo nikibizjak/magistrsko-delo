@@ -2,11 +2,21 @@ module Stg.Parser.Internal (parse, ParserException(..)) where
 
 import Stg.Parser.Utils
 import Stg.Stg
-import Prelude hiding (fail, lines, return, (>>), (>>=), (||))
+import Prelude hiding (fail, return, (>>), (>>=), (||))
 
 newtype ParserException = ParserException String
 
 underscore = exactly '_'
+
+-- Comment: starts with -- and ends with a newline
+comment :: Parser ()
+comment = word "--" >> many notLineSeparator >> return ()
+
+spaces :: Parser ()
+spaces = many (oneOf [space, comment]) >> return ()
+
+spaces1 :: Parser ()
+spaces1 = many1 (oneOf [space, comment]) >> return ()
 
 -- identifier = [_a-zA-Z][_a-zA-Z0-9]*
 identifier :: Parser String
@@ -47,7 +57,7 @@ literal = integer
 atom :: Parser Atom
 atom =
   oneOf
-    [ 
+    [
       borrow,
       variable >>= \value -> return $ Variable value,
       literal >>= \value -> return $ Literal value
@@ -97,6 +107,11 @@ application =
       if not (null arguments)
         then return (FunctionApplication function Unknown arguments)
         else return (Atom $ Variable function)
+
+grouping :: Parser b -> Parser b
+grouping parser =
+    exactly '(' >> spaces >> parser >>= \subexpression ->
+        spaces >> exactly ')' >> return subexpression
 
 expression :: Parser Expression
 expression =
