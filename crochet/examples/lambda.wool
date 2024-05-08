@@ -1,5 +1,0 @@
-main =
-    let
-        f = fun x y z -> x + y + z
-    in
-        f 12;;
