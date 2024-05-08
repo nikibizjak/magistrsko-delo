@@ -69,9 +69,9 @@ atomicExpression =
 
 letIn :: Parser Expression
 letIn =
-  word "let" >> spaces1 >> binding >>= \(Binding name value) ->
+  word "let" >> spaces1 >> many1 binding >>= \binds ->
     spaces >> word "in" >> spaces >> expression >>= \body ->
-      return (LetIn name value body)
+      return $ foldr (\(Binding name value) current -> LetIn name value current) body binds
 
 defaultAlternative :: Parser Alternative
 defaultAlternative =
