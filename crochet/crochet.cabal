@@ -17,6 +17,9 @@ executable crochet
         Stg.FreeVariables
         Stg.NameResolution
         Stg.MoveCheck
+        Stg.BorrowCheck.Internal
+        Stg.BorrowCheck.Lifetime
+        Stg.BorrowCheck.Exception
         Stg.BorrowCheck
         Stg.Interpreter
     build-depends:
