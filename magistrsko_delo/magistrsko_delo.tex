@@ -250,8 +250,8 @@ Nestrogo semantiko je moč implementirati na dva različna načina:
 
 \begin{itemize}
 	\itemsep 0em
-	\item model potisni / vstopi (angl. push / enter model)
-	\item model evalviraj / apliciraj (angl. eval / apply model)
+	\item model potisni in vstopi (angl. push / enter model)
+	\item model izračunaj in apliciraj (angl. eval / apply model)
 \end{itemize}
 
 Abstraktni STG stroj je zgodovinsko najprej uporabljal model potisni / vstopi~\cite{jones1992implementing}. Trenutna različica STG stroja pa uporablja model evalviraj / apliciraj~\cite{marlow2004making}, saj se je empirično izkazal za bolj učinkovito implementacijo nestroge semantike.
@@ -289,7 +289,9 @@ Prevajalnik lahko med prevajanjem za določene funkcije določi njihovo mestnost
 	\vert& \quad \texttt{case} \enspace e \enspace \texttt{of} \enspace \{ alt_1; \dots; alt_n \}& \text{} \\
 \end{align*}
 
-Pri tem velja, da so vse primitivne operacije \textit{saturirane}, kar pomeni, da sprejmejo natanko toliko argumentov, kot je mestnost (angl. arity) funkcije. Če programski jezik omogoča delno aplikacijo primitivnih funkcij, potem je potrebno take delne aplikacije z $\eta$-dopolnjevanjem razširiti v saturirano obliko. Pri tem delno aplikacijo ovijemo v nove lambda izraze z uvedbo novih spremenljivk, ki se ne pojavijo nikjer v izrazu. Tako npr. izraz \texttt{(+ 3)}, ki predstavlja delno aplikacijo vgrajene funkcije za seštevanje prevedemo v funkcijo $\lambda x . (+ 3 x)$ in s tem zadostimo pogoju saturiranosti.
+% TODO: Prevedi saturated / saturirane v zasičene
+
+Pri tem velja, da so vse primitivne operacije \textit{zasičene}, kar pomeni, da sprejmejo natanko toliko argumentov, kot je mestnost (angl. arity) funkcije. Če programski jezik omogoča delno aplikacijo primitivnih funkcij, potem je potrebno take delne aplikacije z $\eta$-dopolnjevanjem razširiti v saturirano obliko. Pri tem delno aplikacijo ovijemo v nove lambda izraze z uvedbo novih spremenljivk, ki se ne pojavijo nikjer v izrazu. Tako npr. izraz \texttt{(+ 3)}, ki predstavlja delno aplikacijo vgrajene funkcije za seštevanje prevedemo v funkcijo $\lambda x . (+ 3 x)$ in s tem zadostimo pogoju saturiranosti.
 
 \begin{align*}
 	alt \quad \coloneq& \quad C \enspace x_1 \dots x_n \to expr & \text{algebraična alternativa}\\
@@ -325,11 +327,95 @@ Objekt \textsc{THUNK} predstavlja zakasnitev izraza $e$. Kadar se vrednost izraz
 
 \section{Rustov model lastništva}
 
-% \chapter{Implementacija}
-%\label{ch:implementacija}
+% Avtomatično čiščenje pomnilnika pa ima tudi svoje probleme. Štetje referenc v primeru pomnilniških ciklov privede do puščanja pomnilnika, metoda označi in pometi pa nedeterministično zaustavi izvajanje glavnega programa in tako ni primerna za časovno-kritične (angl. real-time) aplikacije. Kot alternativa obem načinom upravljanja s pomnilnikom sistemski programski jezik Rust implementira model lastništva~\cite{klabnik2023rust}. Med \textit{prevajanjem} zna s posebnimi pravili zagotoviti, da se pomnilnik objektov na kopici avtomatično sprosti, kadar jih program več ne potrebuje. To pa zna storiti brez čistilca pomnilnika in brez eksplicitnega dodeljevanja in sproščanja pomnilnika, zato zagotavlja predvidljivo sproščanje pomnilnika.
 
-%\chapter{Rezultati}
-%\label{ch:rezultati}
+% V magistrskem delu se bomo primarno ukvarjali s STG jezikom. Operacijska semantika tega veleva, da so vsi izrazi v izvorni kodi v pomnilniku predstavljeni kot zaprtja. Jezik vsebuje izraz \texttt{let}, ki na kopici ustvari novo zaprtje, izbirni izraz \texttt{case} pa šele dejansko izračuna njegovo vrednost. Jezik STG za čiščenje zaprtij iz kopice uporablja generacijski čistilec pomnilnika~\cite{jones1992implementing, marlow2004making}. 
+
+% Cilj magistrske naloge je pripraviti simulator STG stroja, nato pa spremeniti STG jezik tako, da bo namesto avtomatičnega čistilca pomnilnika uporabljal model lastništva po zgledu programskega jezika Rust. Zanimalo nas bo, kakšne posledice to v STG stroj prinese, kakšne omejitve se pri tem pojavijo ter do kakšnih problemov lahko pri tem pride. Zavedati se moramo, da obstaja možnost, da koncepta lastništva ni mogoče vpeljati v STG stroj brez korenitih sprememb zasnove stroja samega - v tem primeru bomo podali analizo, zakaj lastništva v STG stroj ni mogoče vpeljati.
+
+Programski jezik Rust je namenjen nizkonivojskemu programiranju, tj. programiranju sistemske programske opreme. Kot tak mora omogočati hitro in predvidljivo sproščanje pomnilnika, zato avtomatični čistilnik pomnilnika ne pride v poštev. Rust namesto tega implementira model lastništva~\cite{klabnik2023rust}, pri katerem zna med \textit{prevajanjem} s posebnimi pravili zagotoviti, da se pomnilnik objektov na kopici avtomatično sprosti, kadar jih program več ne potrebuje. Po hitrosti delovanja se tako lahko kosa s programskim jezikom C, pri tem pa zagotavlja varnejše upravljanje s pomnilnikom kot C.
+
+Pri ročnem upravljanju pomnilnika kot ga poznamo npr. pri programskem jeziku C, pride pogosto do dveh vrst napak: uporaba po sproščanju (angl. use-after-free), pri kateri skuša programer dostopati do pomnilniškega naslova, ki je bil že prej sproščen in dvojno sproščanje, pri katerem .
+
+% Kaj je double free ali use after free
+% RustBelt, Polonius
+
+\chapter{Implementacija}
+\label{ch:implementacija}
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}
+	\tikzset{
+		every node/.append style={text width=1.4cm,execute at begin node=\setlength{\baselineskip}{1em},font=\footnotesize},
+		block/.style={draw,rectangle,text width=2cm,align=center,minimum height=1cm,minimum width=2cm},
+	}
+	
+	\node[block] (parser) {\textbf{Razčlen\-jevanje}};
+	
+	\node[coordinate, left=0.5cm of parser.west] (levo-od-parser) {};
+	
+	\node[block,right=1cm of parser] (borrow-checker) {Analiza izposoj};
+	\node[block, above=0.5cm of borrow-checker] (name-resolution) {\textbf{Raz\-re\-še\-van\-je imen}};
+	\node[block, below=0.5cm of borrow-checker] (move-checker) {Analiza premikov};
+	\node[block, right=1cm of borrow-checker] (interpreter) {\textbf{Abstraktni stroj STG'}};
+	
+	\node[coordinate, right=0.5cm of interpreter.east] (desno-od-interpreter) {};
+	
+	% Input arrow
+	\draw[->] (levo-od-parser) -- (parser) node[above, pos=-0.25,align=center] {\scriptsize tok\\znakov};
+	
+	% Output arrow
+	\draw[->] (interpreter) -- (desno-od-interpreter) node[above,pos=1.25,align=center] {\scriptsize rezultat};
+	
+	% Parser -> name resolution arrow
+	\node[coordinate, right=0.3cm of parser.east] (desno-od-parser) {};
+	\node[coordinate] at (desno-od-parser |- name-resolution) (levo-od-name-resolution) {};	
+	\draw[->] (parser) -- (desno-od-parser) -- node[align=center,sloped,anchor=center,above,pos=0.75] {\scriptsize STG} (levo-od-name-resolution) -- (name-resolution);
+	
+	% Move checker -> abstract STG machine arrow
+	\node[coordinate, left=0.3 of interpreter.west] (levo-od-interpreter) {};
+	\node[coordinate] at (move-checker -| levo-od-interpreter) (desno-od-move-checker) {};
+	\draw[->] (move-checker.east) -- (desno-od-move-checker) -- node[align=center,sloped,anchor=center,below,pos=0.25] {\scriptsize STG'} (levo-od-interpreter) -- (interpreter);
+	
+	% 
+	\draw[->] (name-resolution) -- node[pos=0.5,right] {\scriptsize STG} (borrow-checker);
+	\draw[->] (borrow-checker) -- node[pos=0.5,right] {\scriptsize STG'} (move-checker);
+	
+	% Oznake za semantično analizo
+	\node[coordinate, above=0.4 of name-resolution.north] (top) {};
+	\node[coordinate, below=0.4 of move-checker.south] (bottom) {};
+	
+	\node[coordinate, left=0.5 of borrow-checker.west] (semanticna-analiza-levo) {};
+	\node[coordinate, right=0.5 of borrow-checker.east] (semanticna-analiza-desno) {};
+	
+	\node[coordinate] at (semanticna-analiza-levo |- top) (semanticna-analiza-levo-zgoraj) {};
+	\node[coordinate] at (semanticna-analiza-levo |- bottom) (semanticna-analiza-levo-spodaj) {};
+	
+	\node[coordinate] at (semanticna-analiza-desno |- top) (semanticna-analiza-desno-zgoraj) {};
+	\node[coordinate] at (semanticna-analiza-desno |- bottom) (semanticna-analiza-desno-spodaj) {};
+	
+	\draw[-,dashed] (semanticna-analiza-levo-zgoraj) -- (semanticna-analiza-levo-spodaj) -- (semanticna-analiza-desno-spodaj) -- (semanticna-analiza-desno-zgoraj) -- (semanticna-analiza-levo-zgoraj);
+	
+	\path (semanticna-analiza-levo-zgoraj) -- node[above=0.1,align=center,text width=3cm] {Semantična analiza} (semanticna-analiza-desno-zgoraj);
+	
+	\end{tikzpicture}
+	\caption{Implementacija lastništva in izposoje STG jeziku}
+	\label{fig:shema-implementacije}
+\end{figure}
+
+\section{Analiza izposoj}
+
+%\usetikzlibrary{positioning}
+%\tikzset{set/.style={draw,circle,inner sep=0pt,align=center}}
+%\begin{tikzpicture}
+%	\draw (0,0) ellipse (1.5cm and 2cm);
+%\end{tikzpicture}
+
+\section{Analiza premikov}
+
+\chapter{Rezultati}
+\label{ch:rezultati}
 
 % Za potrebe naše magistrske naloge bomo v izbranem programskem jeziku implementirali simulator STG stroja. V programskem jeziku STG bomo napisali zbirko programov, s pomočjo katerih bomo testirali uspešnost implementirane metode. Merili bomo količino dodeljenega pomnilnika in količino sproščenega pomnilnika in skušali ugotoviti, ali je ves pomnilnik pravočasno sproščen. Cilj magistrskega dela ni izdelava učinkovite implementacije čiščenja pomnilnika, temveč skušati ugotoviti, kakšne spremembe in analize je potrebno dodati v STG stroj, da bo lahko uporabljal princip lastništva namesto čistilca pomnilnika.
 
