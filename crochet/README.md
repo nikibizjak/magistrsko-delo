@@ -10,7 +10,7 @@ cabal run crochet examples/map.wool
 
 ### Funkcija map
 
-Implementacija funkcije `map` vzeta neposredno iz originalnega članka z implementacijo STG stroja[[1]](#1).
+Implementacija funkcije `map` vzeta neposredno iz originalnega članka z implementacijo STG stroja[^1].
 
 ```stg
 nil = CON(Nil)
@@ -29,4 +29,4 @@ map = FUN(f xs ->
 
 ## Literatura
 
-<a id="1">[1]</a> S. Marlow, S. P. Jones, **Making a fast curry: push/enter vs. eval/apply for higher-order languages**, ACM SIGPLAN Notices 39 (9) (2004) 4–15.
+[^1]: S. Marlow, S. P. Jones, **Making a fast curry: push/enter vs. eval/apply for higher-order languages**, ACM SIGPLAN Notices 39 (9) (2004) 4–15.
