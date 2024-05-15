@@ -1,18 +1,32 @@
-# Prevajalnik
+# Prevajalnik `crochet`
+
+## Uporaba
 
 ```bash
-cabal run crochet < examples/example.fj
+cabal run crochet examples/map.wool
 ```
 
-## TODO:
+## Primeri
 
-* [x] Dodaj parsanje tipov `data bool = | True | False ;;`
-* [ ] Dodaj razčlenjevanje spremenljivk
-* [ ] Dodaj preverjanje tipov
-* [ ] Dodaj importe
-* [ ] Vgradi `bool`, `pair` in `'a list` tipe  v jezik
-* [ ] Napiši standardno knjižnico za:
-    * [ ] `pair`: `fst`, `snd`
-    * [ ] `bool`: `and`, `or`, `not`, `xor`, ...
-    * [ ] `'a list`: `head`, `tail`
-* [ ] Prevedi `if b then e1 else e2` --> `case b of | True -> e1 | False -> e2`
+### Funkcija map
+
+Implementacija funkcije `map` vzeta neposredno iz originalnega članka z implementacijo STG stroja[[1]](#1).
+
+```stg
+nil = CON(Nil)
+
+map = FUN(f xs ->
+    case xs of
+    | Nil -> nil
+    | Cons y ys ->
+        let h = THUNK(f y)
+            t = THUNK(map f ys)
+            r = CON(Cons h t)
+        in
+            r
+)
+```
+
+## Literatura
+
+<a id="1">[1]</a> S. Marlow, S. P. Jones, **Making a fast curry: push/enter vs. eval/apply for higher-order languages**, ACM SIGPLAN Notices 39 (9) (2004) 4–15.
