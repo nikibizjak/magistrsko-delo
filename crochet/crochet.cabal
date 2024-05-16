@@ -20,6 +20,8 @@ executable crochet
         Stg.BorrowCheck.Internal
         Stg.BorrowCheck.Lifetime
         Stg.BorrowCheck.Exception
+        Stg.BorrowCheck.Moves
+        Stg.BorrowCheck.Borrows
         Stg.BorrowCheck
         Stg.Interpreter
     build-depends:
