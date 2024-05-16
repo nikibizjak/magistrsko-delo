@@ -7,8 +7,12 @@ newtype BorrowCheckException
   = BorrowCheckException String
   deriving (Show)
 
+success :: Monad m => b -> m (Either a b)
+success value = do
+  return $ Right value
+
 throw :: Monad m => String -> m (Either BorrowCheckException b)
 throw text = return $ Left $ BorrowCheckException text
 
-todo :: State Int (Either BorrowCheckException b)
+todo :: State a (Either BorrowCheckException b)
 todo = throw "Not implemented yet"
