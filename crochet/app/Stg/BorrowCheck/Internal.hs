@@ -50,45 +50,44 @@ isValid ownership lifetimes =
       isValid rest lifetimes
 
 instance BorrowCheck Expression where
-  borrowCheck sigma lifetimes ownership (Atom atom) = todo
-  borrowCheck sigma lifetimes ownership (LetIn name object body) = todo
+  borrowCheck sigma lifetimes ownership (Atom atom) =
+    borrowCheck sigma lifetimes ownership atom
+  borrowCheck sigma lifetimes ownership (LetIn name object body) = do
+    lifetime <- freshLifetime
+    let lifetimes' = (name, lifetime) : lifetimes
+    let ownership' = traceShow body traceShow (borrows body) Owner name object : ownership
+
+    let definitionBorrows = map (Reference name) (toList $ borrows object)
+
+    -- TODO: We still need to figure out what to do with the object. We **need**
+    -- to visit it to check for borrow errors.
+
+    bodyResult <- borrowCheck lifetime lifetimes' (definitionBorrows ++ ownership') body
+    case bodyResult of
+      Right (lifetimes'', ownership'') -> do
+        resultVariable <- freshVariable "result"
+        let
+          resultBorrows = map (Reference resultVariable) (toList $ borrows body)
+          ownership''' = takeOwnership name resultVariable ownership''
+          lifetimes''' = filter (\(variable, _) -> variable /= name) lifetimes''
+
+          finalLifetimes = (resultVariable, sigma) : lifetimes'''
+          finalOwnership = resultBorrows ++ ownership'''
+          in
+
+            -- Check if there is any (Reference ... name) where name is not
+            -- defined in the finalLifetimes.
+            if isValid finalOwnership finalLifetimes
+              then success (finalLifetimes, finalOwnership)
+              else throw "Dangling pointer"
+      Left exception -> return $ Left exception
   borrowCheck sigma lifetimes ownership (FunctionApplication function arity arguments) = todo
   borrowCheck sigma lifetimes ownership (PrimitiveOperation operation arguments) = todo
   borrowCheck sigma lifetimes ownership (CaseOf scrutinee alternatives) = todo
 
-borrowCheckExpression sigma lifetimes ownership expression = do
-  case expression of
-    Atom atom -> borrowCheck sigma lifetimes ownership atom
-    LetIn name object body -> do
-      lifetime <- freshLifetime
-      let lifetimes' = (name, lifetime) : lifetimes
-      let ownership' = traceShow body traceShow (borrows body) Owner name object : ownership
-
-      let definitionBorrows = map (Reference name) (toList $ borrows object)
-
-      bodyResult <- borrowCheckExpression lifetime lifetimes' (definitionBorrows ++ ownership') body
-      case bodyResult of
-        Right (lifetimes'', ownership'') -> do
-          resultVariable <- freshVariable "result"
-          let
-            resultBorrows = map (Reference resultVariable) (toList $ borrows body)
-            ownership''' = takeOwnership name resultVariable ownership''
-            lifetimes''' = filter (\(variable, _) -> variable /= name) lifetimes''
-
-            finalLifetimes = (resultVariable, sigma) : lifetimes'''
-            finalOwnership = resultBorrows ++ ownership'''
-            in
-
-              -- Check if there is any (Reference ... name) where name is not
-              -- defined in the finalLifetimes.
-              if isValid finalOwnership finalLifetimes
-                then success (finalLifetimes, finalOwnership)
-                else throw "Dangling pointer"
-        Left exception -> return $ Left exception
-
 instance BorrowCheck Object where
   borrowCheck sigma lifetimes ownership (Thunk expression) =
-    borrowCheckExpression sigma lifetimes ownership expression
+    borrowCheck sigma lifetimes ownership expression
 
 instance BorrowCheck Binding where
   borrowCheck sigma lifetimes ownership (Binding name object) =
