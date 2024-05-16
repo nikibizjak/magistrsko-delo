@@ -70,6 +70,7 @@ instance MoveCheck Atom where
         Right context
         -- moveCheck context owner variable
     moveCheck context owner (Literal _) = Right context
+    moveCheck context owner (Borrow _) = todo
 
 -- instance MoveCheck Variable where
 --     moveCheck context owner (MovedVariable name) =
