@@ -11,6 +11,10 @@ success :: Monad m => b -> m (Either a b)
 success value = do
   return $ Right value
 
+failure :: Monad m => a -> m (Either a b)
+failure value = do
+  return $ Left value
+
 throw :: Monad m => String -> m (Either BorrowCheckException b)
 throw text = return $ Left $ BorrowCheckException text
 

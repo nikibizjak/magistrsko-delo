@@ -19,10 +19,15 @@ instance Show Ownership where
   show (Reference owner ownee) = owner ++ " ~> " ++ ownee
 
 class BorrowCheck a where
-  borrowCheck :: Lifetime -> [(Variable, Lifetime)] -> [Ownership] -> a -> State (Int, Int) (Either BorrowCheckException ([(Variable, Lifetime)], [Ownership]))
+  borrowCheck :: Lifetime -> [(Variable, Lifetime)] -> [Ownership] -> a -> State (Int, Int) (Either BorrowCheckException ([(Variable, Lifetime)], [Ownership], [Variable], [Variable]))
 
 instance BorrowCheck Atom where
-  borrowCheck _ lifetimes ownership _ = success (lifetimes, ownership)
+  borrowCheck _ lifetimes ownership (Literal _) =
+    success (lifetimes, ownership, [], [])
+  borrowCheck _ lifetimes ownership (Variable name) =
+    success (lifetimes, ownership, [ name ], [])
+  borrowCheck _ lifetimes ownership (Borrow name) =
+    success (lifetimes, ownership, [], [ name ])
 
 owner ownership =
   case ownership of
@@ -39,6 +44,15 @@ takeOwnership previousOwner newOwner ownership =
     head : rest ->
       head : takeOwnership previousOwner newOwner rest
 
+moveMany :: Foldable t => Variable -> t Variable -> [Ownership] -> [Ownership]
+moveMany newOwner variables ownership =
+  foldr (`takeOwnership` newOwner) ownership variables
+
+borrowMany :: Variable -> [Variable] -> [Ownership] -> [Ownership]
+borrowMany newOwner variables ownership =
+  map (Reference newOwner) variables ++ ownership
+
+isValid :: [Ownership] -> [(Variable, b)] -> Bool
 isValid ownership lifetimes =
   case ownership of
     [] -> True
@@ -49,38 +63,62 @@ isValid ownership lifetimes =
     _ : rest ->
       isValid rest lifetimes
 
+freeVariable name ownership =
+  case ownership of
+    [] -> []
+    (Owner owner ownee) : rest | owner == name -> freeVariable name rest
+    head : rest -> head : freeVariable name rest
+
 instance BorrowCheck Expression where
   borrowCheck sigma lifetimes ownership (Atom atom) =
     borrowCheck sigma lifetimes ownership atom
   borrowCheck sigma lifetimes ownership (LetIn name object body) = do
-    lifetime <- freshLifetime
-    let lifetimes' = (name, lifetime) : lifetimes
-    let ownership' = traceShow body traceShow (borrows body) Owner name object : ownership
+    letLifetime <- freshLifetime
 
-    let definitionBorrows = map (Reference name) (toList $ borrows object)
+    let lifetimes' = (name, letLifetime) : lifetimes
+    let ownership' = Owner name object : ownership
 
-    -- TODO: We still need to figure out what to do with the object. We **need**
-    -- to visit it to check for borrow errors.
+    -- Object
+    definitionResult <- borrowCheck letLifetime lifetimes' ownership' object
+    case definitionResult of
+      Left exception -> failure exception
+      Right (definitionLifetimes, definitionOwnership, definitionMoves, definitionBorrows) -> do
 
-    bodyResult <- borrowCheck lifetime lifetimes' (definitionBorrows ++ ownership') body
-    case bodyResult of
-      Right (lifetimes'', ownership'') -> do
+        -- name -> definitionMoves
+        let ownership'' = moveMany name definitionMoves definitionOwnership
+        -- name ~> definitionBorrows
+        let ownership''' = borrowMany name definitionBorrows ownership''
+
+        -- Body
         resultVariable <- freshVariable "result"
-        let
-          resultBorrows = map (Reference resultVariable) (toList $ borrows body)
-          ownership''' = takeOwnership name resultVariable ownership''
-          lifetimes''' = filter (\(variable, _) -> variable /= name) lifetimes''
+        let lifetimes'' = (resultVariable, sigma) : definitionLifetimes
 
-          finalLifetimes = (resultVariable, sigma) : lifetimes'''
-          finalOwnership = resultBorrows ++ ownership'''
-          in
+        bodyResult <- borrowCheck letLifetime lifetimes'' ownership''' body
+        case bodyResult of
+          Left exception -> failure exception
+          Right (lifetimesBody, ownershipBody, movesBody, borrowsBody) -> do
 
-            -- Check if there is any (Reference ... name) where name is not
-            -- defined in the finalLifetimes.
-            if isValid finalOwnership finalLifetimes
-              then success (finalLifetimes, finalOwnership)
+            -- result ~> borrowsBody
+            let ownershipBody' = borrowMany resultVariable borrowsBody ownershipBody
+
+            -- End
+            --   1. Remove all variables that were created in this lifetime (that is
+            --      all (name, lifetime) ∈ lifetimesBody).
+            let lifetimeDefinitions = filter (\(_, lifetime) -> lifetime == letLifetime) lifetimesBody
+            let variablesInLifetime = map fst lifetimeDefinitions
+
+            let lifetimesFinal = filter (\(name, _) -> name `notElem` variablesInLifetime) lifetimesBody
+            let ownershipFinal = takeOwnership name resultVariable ownershipBody'
+
+            -- resultVariable -> movesBody
+            let ownershipFinal' = foldr (`takeOwnership` resultVariable) ownershipFinal movesBody
+
+            let ownershipFinal'' = foldr freeVariable ownershipFinal' variablesInLifetime
+
+            if isValid ownershipFinal'' lifetimesFinal
+              then success (lifetimesFinal, ownershipFinal'', [ resultVariable ], [ ])
               else throw "Dangling pointer"
-      Left exception -> return $ Left exception
+
   borrowCheck sigma lifetimes ownership (FunctionApplication function arity arguments) = todo
   borrowCheck sigma lifetimes ownership (PrimitiveOperation operation arguments) = todo
   borrowCheck sigma lifetimes ownership (CaseOf scrutinee alternatives) = todo
@@ -95,12 +133,12 @@ instance BorrowCheck Binding where
 
 borrowCheckSequential sigma lifetimes ownership items = do
   case items of
-    [] -> success (lifetimes, ownership)
+    [] -> success (lifetimes, ownership, [], [])
     item : rest -> do
       result <- borrowCheck sigma lifetimes ownership item
       case result of
         Left exception -> return result
-        Right (lifetimes', ownership') ->
+        Right (lifetimes', ownership', _, _) ->
           borrowCheckSequential sigma lifetimes' ownership' rest
 
 borrowCheckProgram program =
@@ -111,5 +149,5 @@ borrowCheckProgram program =
     result = evalState (borrowCheckSequential staticLifetime topLevelLifetimes [] program) (1, 1)
   in
     case result of
-      Right (lifetimes, ownership) -> Right (lifetimes, ownership)
+      Right (lifetimes, ownership, _, _) -> Right (lifetimes, ownership)
       Left exception -> Left exception
