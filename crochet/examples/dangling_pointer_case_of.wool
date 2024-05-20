@@ -1,0 +1,10 @@
+main = THUNK(
+    let
+        condition = CON(True)
+        valueTrue = THUNK(1)
+        valueFalse = THUNK(2)
+    in
+        case condition of
+        | True -> valueTrue
+        | False -> valueFalse
+)

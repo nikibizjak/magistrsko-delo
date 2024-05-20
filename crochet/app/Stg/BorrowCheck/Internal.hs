@@ -151,7 +151,21 @@ instance BorrowCheck Expression where
             then success (lifetimesFinal, ownershipFinal, [ resultVariable ], [ ])
             else throw "Dangling pointer"
 
-  borrowCheck sigma lifetimes ownership (CaseOf scrutinee alternatives) = todo
+  borrowCheck sigma lifetimes ownership (CaseOf scrutinee alternatives) = do
+    scrutineeResult <- borrowCheck sigma lifetimes ownership scrutinee
+    case scrutineeResult of
+      Left exception -> failure exception
+      Right (lifetimesScrutinee, ownershipScrutinee, moves, borrows) -> do
+        borrowCheckSequential sigma lifetimesScrutinee ownershipScrutinee moves borrows alternatives
+
+instance BorrowCheck Alternative where
+  borrowCheck sigma lifetimes ownership (AlgebraicAlternative name parameters body) = do
+    -- TODO: What do we do with parameters?
+    -- let lifetimes' = map (\parameter -> (parameter, sigma)) parameters
+    borrowCheck sigma lifetimes ownership body
+
+  borrowCheck sigma lifetimes ownership (DefaultAlternative variable body) = do
+    borrowCheck sigma lifetimes ownership body
 
 instance BorrowCheck Object where
   borrowCheck sigma lifetimes ownership (Thunk expression) =
