@@ -67,6 +67,7 @@ freeVariable name ownership =
   case ownership of
     [] -> []
     (Owner owner ownee) : rest | owner == name -> freeVariable name rest
+    (Reference owner ownee) : rest | owner == name -> freeVariable name rest
     head : rest -> head : freeVariable name rest
 
 instance BorrowCheck Expression where
