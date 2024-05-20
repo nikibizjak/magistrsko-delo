@@ -156,6 +156,12 @@ instance BorrowCheck Expression where
 instance BorrowCheck Object where
   borrowCheck sigma lifetimes ownership (Thunk expression) =
     borrowCheck sigma lifetimes ownership expression
+  
+  borrowCheck sigma lifetimes ownership BlackHole =
+    success (lifetimes, ownership, [], [])
+  
+  borrowCheck sigma lifetimes ownership (Constructor name arguments) = do
+    borrowCheckSequential sigma lifetimes ownership [] [] arguments
 
 instance BorrowCheck Binding where
   borrowCheck sigma lifetimes ownership (Binding name object) =
@@ -169,7 +175,7 @@ borrowCheckSequential sigma lifetimes ownership moves borrows items = do
       case result of
         Left exception -> return result
         Right (lifetimes', ownership', moves', borrows') ->
-          borrowCheckSequential sigma lifetimes' ownership' moves' borrows' rest
+          borrowCheckSequential sigma lifetimes' ownership' (moves ++ moves') (borrows ++ borrows') rest
 
 borrowCheckProgram program =
   let
