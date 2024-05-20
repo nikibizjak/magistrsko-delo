@@ -1,0 +1,7 @@
+f = THUNK(0)
+
+main = THUNK(
+    let a = THUNK(1) in
+        let b = THUNK(2) in
+            f a b
+)

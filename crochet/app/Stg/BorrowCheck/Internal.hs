@@ -72,55 +72,84 @@ freeVariable name ownership =
 instance BorrowCheck Expression where
   borrowCheck sigma lifetimes ownership (Atom atom) =
     borrowCheck sigma lifetimes ownership atom
-  borrowCheck sigma lifetimes ownership (LetIn name object body) = do
-    letLifetime <- freshLifetime
+  
+  borrowCheck sigma lifetimes ownership (FunctionApplication function _ arguments) =
+    borrowCheckSequential sigma lifetimes ownership [function] [] arguments
+  
+  borrowCheck sigma lifetimes ownership (PrimitiveOperation _ arguments) =
+    borrowCheckSequential sigma lifetimes ownership [] [] arguments
 
+  borrowCheck sigma lifetimes ownership (LetIn name object body) = do
+
+    -- The execution of a let expression is divided into 4 parts:
+    --   1. Definition
+    --   2. Object
+    --   3. Body
+    --   4. Epilogue
+
+    -- DEFINITION: let name = object in ...
+    -- Create a new lifetime. This lifetime is used as a lifetime for the
+    -- defined variable (ie. in the expression `let name = object in body`, the
+    -- variable name has a lifetime 'letLifetime).
+    letLifetime <- freshLifetime
     let lifetimes' = (name, letLifetime) : lifetimes
+
+    -- The only thing we know for now is that the variable `name` takes
+    -- ownership of the heap object `object`.
     let ownership' = Owner name object : ownership
 
-    -- Object
-    definitionResult <- borrowCheck letLifetime lifetimes' ownership' object
-    case definitionResult of
+    -- OBJECT: let name = object in ...
+    -- Analyze the ownership of the heap object `object`. 
+    objectResult <- borrowCheck letLifetime lifetimes' ownership' object
+    case objectResult of
       Left exception -> failure exception
-      Right (definitionLifetimes, definitionOwnership, definitionMoves, definitionBorrows) -> do
+      Right (objectLifetimes, objectOwnership, objectMoves, objectBorrows) -> do
 
-        -- name -> definitionMoves
-        let ownership'' = moveMany name definitionMoves definitionOwnership
-        -- name ~> definitionBorrows
-        let ownership''' = borrowMany name definitionBorrows ownership''
+        -- The variable `name` should take ownership of all the variables in
+        -- `objectMoves`. It should also borrow all the variables in
+        -- `objectBorrows`.
+        let ownership'' = moveMany name objectMoves objectOwnership
+        let ownership''' = borrowMany name objectBorrows ownership''
 
-        -- Body
+        -- BODY: let ... = ... in body
+        -- Define a new unique variable `result`, which is the result of the let
+        -- expression. Since it is the result, it should live in the parent
+        -- lifetime `sigma`.
         resultVariable <- freshVariable "result"
-        let lifetimes'' = (resultVariable, sigma) : definitionLifetimes
-
+        let lifetimes'' = (resultVariable, sigma) : objectLifetimes
+        
+        -- Analyze the ownership of the expression `body`.
         bodyResult <- borrowCheck letLifetime lifetimes'' ownership''' body
         case bodyResult of
           Left exception -> failure exception
           Right (lifetimesBody, ownershipBody, movesBody, borrowsBody) -> do
 
-            -- result ~> borrowsBody
-            let ownershipBody' = borrowMany resultVariable borrowsBody ownershipBody
+            -- ∀ variable ∈ movesBody: result -> variable
+            let ownership' = moveMany resultVariable movesBody ownershipBody
+            -- ∀ variable ∈ borrowsBody: result ~> variable
+            let ownership'' = borrowMany resultVariable borrowsBody ownership'
+            
+            -- EPILOGUE: Executes right after the body of the let expression.
+            -- Here, the memory for the heap objects is freed.
 
-            -- End
-            --   1. Remove all variables that were created in this lifetime (that is
-            --      all (name, lifetime) ∈ lifetimesBody).
+            -- Remove all variables that were created in this lifetime (that is
+            -- all (name, lifetime) ∈ lifetimesBody).
+
+            -- Find all variables that were defined in this lifetime.
             let lifetimeDefinitions = filter (\(_, lifetime) -> lifetime == letLifetime) lifetimesBody
+            -- Get the names of the variables
             let variablesInLifetime = map fst lifetimeDefinitions
 
+            -- Remove all the variables that were defined in this lifetime.
             let lifetimesFinal = filter (\(name, _) -> name `notElem` variablesInLifetime) lifetimesBody
-            let ownershipFinal = takeOwnership name resultVariable ownershipBody'
 
-            -- resultVariable -> movesBody
-            let ownershipFinal' = foldr (`takeOwnership` resultVariable) ownershipFinal movesBody
+            -- Free the variables that were defined in this lifetime.
+            let ownershipFinal = foldr freeVariable ownership'' variablesInLifetime
 
-            let ownershipFinal'' = foldr freeVariable ownershipFinal' variablesInLifetime
+            if isValid ownershipFinal lifetimesFinal
+            then success (lifetimesFinal, ownershipFinal, [ resultVariable ], [ ])
+            else throw "Dangling pointer"
 
-            if isValid ownershipFinal'' lifetimesFinal
-              then success (lifetimesFinal, ownershipFinal'', [ resultVariable ], [ ])
-              else throw "Dangling pointer"
-
-  borrowCheck sigma lifetimes ownership (FunctionApplication function arity arguments) = todo
-  borrowCheck sigma lifetimes ownership (PrimitiveOperation operation arguments) = todo
   borrowCheck sigma lifetimes ownership (CaseOf scrutinee alternatives) = todo
 
 instance BorrowCheck Object where
@@ -131,22 +160,22 @@ instance BorrowCheck Binding where
   borrowCheck sigma lifetimes ownership (Binding name object) =
     borrowCheck sigma lifetimes ownership object
 
-borrowCheckSequential sigma lifetimes ownership items = do
+borrowCheckSequential sigma lifetimes ownership moves borrows items = do
   case items of
-    [] -> success (lifetimes, ownership, [], [])
+    [] -> success (lifetimes, ownership, moves, borrows)
     item : rest -> do
       result <- borrowCheck sigma lifetimes ownership item
       case result of
         Left exception -> return result
-        Right (lifetimes', ownership', _, _) ->
-          borrowCheckSequential sigma lifetimes' ownership' rest
+        Right (lifetimes', ownership', moves', borrows') ->
+          borrowCheckSequential sigma lifetimes' ownership' moves' borrows' rest
 
 borrowCheckProgram program =
   let
     -- The toplevel definitions all have 'static lifetime (which is internally
     -- represented as `Lifetime '0`).
     topLevelLifetimes = map (\(Binding name _) -> (name, staticLifetime)) program
-    result = evalState (borrowCheckSequential staticLifetime topLevelLifetimes [] program) (1, 1)
+    result = evalState (borrowCheckSequential staticLifetime topLevelLifetimes [] [] [] program) (1, 1)
   in
     case result of
       Right (lifetimes, ownership, _, _) -> Right (lifetimes, ownership)
