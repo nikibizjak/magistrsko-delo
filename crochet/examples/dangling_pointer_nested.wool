@@ -1,0 +1,7 @@
+main = THUNK(
+    let a = THUNK(
+        let b = THUNK(1) in
+            &b
+    ) in
+        a
+)
