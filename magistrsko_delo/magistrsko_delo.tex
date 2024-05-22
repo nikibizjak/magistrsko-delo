@@ -343,7 +343,26 @@ Pri ročnem upravljanju pomnilnika kot ga poznamo npr. pri programskem jeziku C,
 \chapter{Implementacija}
 \label{ch:implementacija}
 
-\begin{figure}[h]
+% Naša prevajalnik temelji na 
+% Naš prevajalnik:
+%   * razčlenjevanje (angl. parsing)
+%   * semantična analiza
+
+V fazi semantične analize prevajalnik izvede najprej razreševanje imen (angl. name resolution), ki mu sledita analiza izposoj (angl. borrow check) in premikov (angl. move check).
+
+Pri razreševanju imen prevajalnik preveri, ali so vsa imena spremenljivk definirana pred njihovo uporabo. Prevajalnik se v tej fazi rekurzivno sprehodi čez abstraktno sintaksno drevo STG jezika. Pri tem vzdržuje kontekst trenutno živih spremenljivk. Pri uporabi spremenljivk prevajalnik preveri, ali se ime nahaja v kontekstu in v nasprotnem primeru vrne napako. Če se proces razreševanja imen zaključi brez napake, je zagotovljeno, da tekom izvajanja programa ne bo prišlo do napake zaradi uporabe nedefinirane spremenljivke.
+
+Pri analizi izposoj prevajalnik zagotovi, da izposoja ne živi dlje od spremenljivke, ki jo referencira. 
+
+\begin{stgcode}
+-- Glavna funkcija
+main = THUNK(
+	let a = THUNK(12) in
+		&a
+)
+\end{stgcode}
+
+\begin{figure}[ht]
 	\centering
 	\begin{tikzpicture}
 	\tikzset{
@@ -400,17 +419,11 @@ Pri ročnem upravljanju pomnilnika kot ga poznamo npr. pri programskem jeziku C,
 	\path (semanticna-analiza-levo-zgoraj) -- node[above=0.1,align=center,text width=3cm] {Semantična analiza} (semanticna-analiza-desno-zgoraj);
 	
 	\end{tikzpicture}
-	\caption{Implementacija lastništva in izposoje STG jeziku}
+	\caption{Faze implementirane prevajalnika}
 	\label{fig:shema-implementacije}
 \end{figure}
 
 \section{Analiza izposoj}
-
-%\usetikzlibrary{positioning}
-%\tikzset{set/.style={draw,circle,inner sep=0pt,align=center}}
-%\begin{tikzpicture}
-%	\draw (0,0) ellipse (1.5cm and 2cm);
-%\end{tikzpicture}
 
 \section{Analiza premikov}
 

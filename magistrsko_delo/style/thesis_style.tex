@@ -65,6 +65,18 @@
 % \usetikzlibrary{external}
 % \tikzexternalize % activate!
 
+% Minted package for code highlighting. To enable bold characters in code, the lmodern font family must also be included.
+\usepackage{minted}
+\usepackage{lmodern}
+
+% Defines an environment which typesets code with language STG and style stgyle.
+% Usage:
+% \begin{stgcode}
+% main = THUNK(1)
+% \end{stgcode}
+\newminted{stg}{style=stgyle, tabsize=2}
+\newenvironment{env}{\VerbatimEnvironment\begin{stgcode}}{\end{stgcode}}
+
 %================================================================
 % SLO: nastavitve dokumenta
 % ENG: document properties
