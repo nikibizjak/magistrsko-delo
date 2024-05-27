@@ -76,7 +76,7 @@ letIn =
 defaultAlternative :: Parser Alternative
 defaultAlternative =
     variable >>= \name ->
-    spaces1 >> word "->" >> spaces >> expression >>= \expression ->
+    spaces >> word "->" >> spaces >> expression >>= \expression ->
     return (DefaultAlternative name expression)
 
 algebraicAlternative :: Parser Alternative
@@ -94,7 +94,7 @@ alternative =
 caseOf :: Parser Expression
 caseOf =
   word "case" >> spaces1 >> expression >>= \scrutinee ->
-    spaces1 >> word "of" >> spaces1 >>
+    spaces1 >> word "of" >> spaces >>
     many1 (spaces >> alternative) >>= \alternatives ->
     return (CaseOf scrutinee alternatives)
 
@@ -190,7 +190,7 @@ object =
 binding :: Parser Binding
 binding =
   identifier >>= \name ->
-    spaces1 >> exactly '=' >> spaces >> object >>= \body ->
+    spaces >> exactly '=' >> spaces >> object >>= \body ->
       return (Binding name body)
 
 declaration :: Parser Binding
