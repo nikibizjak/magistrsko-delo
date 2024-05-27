@@ -3,6 +3,7 @@ module Stg.Parser.Internal (parse, ParserException(..)) where
 import Stg.Parser.Utils
 import Stg.Stg
 import Prelude hiding (fail, return, (>>), (>>=), (||))
+import Stg.Types (TypeHint(TypeHint), StgType (..), Lifetime (NamedLifetime, StaticLifetime))
 
 newtype ParserException = ParserException String
 
@@ -193,14 +194,88 @@ binding =
     spaces >> exactly '=' >> spaces >> object >>= \body ->
       return (Binding name body)
 
-declaration :: Parser Binding
-declaration = spaces >> binding
+namedType :: Parser StgType
+namedType =
+  identifier >>= \name ->
+    return $ NamedType name
 
-program :: Parser Program
-program = many declaration
+lifetime :: Parser Lifetime
+lifetime =
+  exactly '\'' >> identifier >>= \name ->
+    case name of
+      "static" -> return StaticLifetime
+      _ -> return $ NamedLifetime name
 
-parse :: String -> Either ParserException Program
+referenceType :: Parser StgType
+referenceType =
+ exactly '&' >> spaces >> lifetime >>= \lifetime ->
+  spaces >> stgType >>= \subtype ->
+    return $ ReferencedType lifetime subtype
+
+productType :: Parser StgType
+productType =
+  exactly '(' >> spaces >>
+    oneOf [
+      -- An empty product type () - Unit type
+      exactly ')' >> return (ProductType []),
+      -- Non-empty product type (T_1, T_2, ..., T_n)
+      stgType >>= \first ->
+        many (exactly ',' >> spaces >> stgType) >>= \rest ->
+          spaces >> exactly ')' >>
+            return (ProductType $ first : rest)
+    ]
+
+atomicType :: Parser StgType
+atomicType =
+  oneOf [ productType, namedType, referenceType, grouping stgType ]
+
+arrowType :: Parser StgType
+arrowType =
+  atomicType >>= \first ->
+    oneOf [
+      spaces >> word "->" >> spaces >> arrowType >>= \next ->
+        return $ ArrowType first next,
+      return first
+    ]
+
+stgType :: Parser StgType
+stgType = arrowType
+
+typeHint :: Parser TypeHint
+typeHint =
+  identifier >>= \name ->
+    spaces >> word "::" >> spaces >> stgType >>= \stgType ->
+      return (TypeHint name stgType)
+
+declaration :: Parser Declaration
+declaration = spaces >> oneOf [
+  binding >>= \result -> return $ BindingDeclaration result,
+  typeHint >>= \result -> return $ TypeHintDeclaration result
+  ]
+
+declarations :: Parser [Declaration]
+declarations = many declaration
+
+data Declaration
+  = BindingDeclaration Binding
+  | TypeHintDeclaration TypeHint
+
+splitDeclarations :: [Declaration] -> ([Binding], [TypeHint])
+splitDeclarations declarations =
+  case declarations of
+    [] -> ([], [])
+    head : rest ->
+      let
+        (bindings, typeHints) = splitDeclarations rest
+      in
+        case head of
+          (BindingDeclaration binding) -> (binding : bindings, typeHints)
+          (TypeHintDeclaration hint) -> (bindings, hint : typeHints)
+
+parse :: String -> Either ParserException (Program, [TypeHint])
 parse input =
-  case program input of
-    Just (result, []) -> Right result
+  case declarations input of
+    Just (result, []) ->
+      let (bindings, typeHints) = splitDeclarations result in
+        Right (bindings, typeHints)
     _ -> Left $ ParserException "Invalid input"

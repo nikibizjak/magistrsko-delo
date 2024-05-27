@@ -24,9 +24,10 @@ execute contents =
     case parse contents of
         Left (ParserException exception) ->
             putStrLn $ "[ ] Parsing AST tree exception: " ++ exception
-        Right program -> do
+        Right (program, typeHints) -> do
             putStrLn "[x] Parsing AST tree"
             print $ map pretty program
+            print typeHints
         
             -- Perform name resolution - find undefined variables.
             case nameResolutionProgram program of

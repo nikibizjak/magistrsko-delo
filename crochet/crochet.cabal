@@ -22,6 +22,7 @@ executable crochet
         Stg.BorrowCheck.Exception
         Stg.BorrowCheck.Moves
         Stg.BorrowCheck.Borrows
+        Stg.Types
         Stg.BorrowCheck
         Stg.Interpreter
     build-depends:
