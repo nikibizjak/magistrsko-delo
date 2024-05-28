@@ -209,7 +209,7 @@ lifetime =
 referenceType :: Parser StgType
 referenceType =
  exactly '&' >> spaces >> lifetime >>= \lifetime ->
-  spaces >> stgType >>= \subtype ->
+  spaces >> atomicType >>= \subtype ->
     return $ ReferencedType lifetime subtype
 
 productType :: Parser StgType
@@ -222,12 +222,16 @@ productType =
       stgType >>= \first ->
         many (exactly ',' >> spaces >> stgType) >>= \rest ->
           spaces >> exactly ')' >>
-            return (ProductType $ first : rest)
+            -- If there is only one element in the product, then this is a
+            -- grouping operation and should not be wrapped in a ProductType.
+            if null rest
+              then return first
+              else return (ProductType $ first : rest)
     ]
 
 atomicType :: Parser StgType
 atomicType =
-  oneOf [ productType, namedType, referenceType, grouping stgType ]
+  oneOf [ productType, namedType, referenceType ]
 
 arrowType :: Parser StgType
 arrowType =
@@ -251,7 +255,8 @@ declaration :: Parser Declaration
 declaration = spaces >> oneOf [
   binding >>= \result -> return $ BindingDeclaration result,
   typeHint >>= \result -> return $ TypeHintDeclaration result
-  ]
+  ] >>= \result ->
+    spaces >> return result
 
 declarations :: Parser [Declaration]
 declarations = many declaration
