@@ -1,0 +1,11 @@
+plusInt :: A -> A -> A
+plusInt = FUN(x y -> 
+    case x of
+    | Integer i ->
+        case y of
+        | Integer j ->
+            case +# i j of
+            | x ->
+                let result = CON(Integer x) in
+                    result
+)

@@ -109,6 +109,21 @@ application =
         then return (FunctionApplication function Unknown arguments)
         else return (Atom $ Variable function)
 
+addition :: Parser PrimitiveOperation
+addition = word "+#" >> return Addition
+
+multiplication :: Parser PrimitiveOperation
+multiplication = word "*#" >> return Multiplication
+
+operation :: Parser PrimitiveOperation
+operation = oneOf [ addition, multiplication ]
+
+primitiveOperation :: Parser Expression
+primitiveOperation =
+  operation >>= \operation ->
+    many1 (spaces1 >> atom) >>= \arguments ->
+      return $ PrimitiveOperation operation arguments
+
 grouping :: Parser b -> Parser b
 grouping parser =
     exactly '(' >> spaces >> parser >>= \subexpression ->
@@ -120,6 +135,7 @@ expression =
     [ letIn,
       caseOf,
       grouping expression,
+      primitiveOperation,
       application,
       atomicExpression
     ]
