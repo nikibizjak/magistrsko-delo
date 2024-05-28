@@ -22,15 +22,24 @@ instance Show Lifetime where
     show (NamedLifetime name) = '\'' : name
     show StaticLifetime = "'static"
 
+showGroup :: Show a => a -> String
+showGroup item = '(' : show item ++ ")"
+
 instance Show StgType where
     show (NamedType name) = name
-    show (ReferencedType lifetime subtype) = '&' : show lifetime ++ ' ' : show subtype
+    show (ReferencedType lifetime subtype) =
+        case subtype of
+            (ReferencedType _ _) ->
+                '&' : show lifetime ++ ' ' : showGroup subtype
+            (ArrowType _ _) ->
+                '&' : show lifetime ++ ' ' : showGroup subtype
+            _ -> '&' : show lifetime ++ ' ' : show subtype
     show (ProductType types) =
-        if null types
-            then "()"
-            else
-                '(' : intercalate ", " (map show types) ++ ")"
-    show (ArrowType left right) = "(" ++ show left ++ " -> " ++ show right ++ ")"
+        '(' : intercalate ", " (map show types) ++ ")"
+    show (ArrowType left right) =
+        case left of
+            (ArrowType _ _) -> showGroup left ++ " -> " ++ show right
+            _ -> show left ++ " -> " ++ show right
 
 instance Show TypeHint where
     show (TypeHint name stgType) = name ++ " :: " ++ show stgType

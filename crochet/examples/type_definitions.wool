@@ -1,0 +1,35 @@
+-- Generic type
+a :: T
+
+-- A simple arrow type
+b :: T -> U
+
+-- Right associativity
+-- c :: T -> (U -> V)
+c :: T -> U -> V
+
+-- d :: T -> ((U -> V) -> Z)
+d :: T -> (U -> V) -> Z
+
+e :: (T -> U) -> (T -> Z) -> Z
+
+
+-- References
+f :: &'a T
+
+g :: &'a A -> B
+
+h :: &'a &'b T
+
+i :: &'a (A -> B)
+
+j :: &'a A -> &'b B
+
+k :: T -> &'a (&'b T -> &'c U) -> U
+
+-- Product types
+l :: ()
+
+m :: () -> () -> (T, T -> U) -> U
+
+n :: (T)
