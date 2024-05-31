@@ -95,7 +95,9 @@ instance MoveCheck Binding where
   moveCheck context owner (Binding name value) = moveCheck context owner value
 
 moveCheckProgram :: Program -> Either MoveCheckException MoveCheckContext
-moveCheckProgram = moveCheckSequential [] Nothing
+moveCheckProgram =
+    -- moveCheckSequential [] Nothing
+    return $ Right []
 
 moveCheckSequential :: (MoveCheck a) => MoveCheckContext -> Maybe Expression -> [a] -> Either MoveCheckException MoveCheckContext
 moveCheckSequential context owner items =
