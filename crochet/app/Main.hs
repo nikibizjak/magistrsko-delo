@@ -10,6 +10,7 @@ import Stg.FreeVariables
 import Stg.NameResolution
 import Stg.MoveCheck
 import Stg.BorrowCheck
+import Stg.Interpreter
 
 main = do
     arguments <- getArgs
@@ -50,7 +51,12 @@ execute contents =
                                 Left (MoveCheckException exception) ->
                                     putStrLn $ "[ ] Move check exception: " ++ exception
                                 Right _ -> do
-
                                     putStrLn "[x] Move check"
 
-                            
+                                    interpreterResult <- runDebugAll program
+                                    case interpreterResult of
+                                        Left (InterpreterException exception) ->
+                                            putStrLn $ "[ ] Interpreter exception: " ++ exception
+                                        Right result -> do
+                                            putStr "[x] Interpreter result: "
+                                            putStrLn $ pretty result

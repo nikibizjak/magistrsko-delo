@@ -1,3 +1,10 @@
-module Stg.Interpreter where
+module Stg.Interpreter (
+    run,
+    runDebug,
+    runDebugExpression,
+    runDebugAll,
+    InterpreterException(..)
+) where
 
-import qualified Stg.Stg as Stg
+import Stg.Interpreter.Internal
+import Stg.Interpreter.Evaluation
