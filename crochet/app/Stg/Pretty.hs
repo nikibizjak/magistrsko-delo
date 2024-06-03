@@ -2,12 +2,14 @@ module Stg.Pretty where
 
 import Stg.Stg
 import Data.List (intercalate)
+import Text.Printf (printf)
 
 class Pretty a where
    pretty :: a -> String
 
 instance Pretty Literal where
    pretty (Integer n) = show n
+   pretty (Address a) = printf "0x%04x" a
 
 instance Pretty Atom where
    pretty (Variable v) = v

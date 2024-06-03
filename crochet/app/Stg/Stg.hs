@@ -1,7 +1,8 @@
 module Stg.Stg where
 
-newtype Literal
+data Literal
     = Integer Int
+    | Address Int
     -- Missing: Double, which is implemented in the original paper
     deriving (Show, Eq)
 

@@ -3,7 +3,8 @@ module Stg.Interpreter (
     runDebug,
     runDebugExpression,
     runDebugAll,
-    InterpreterException(..)
+    InterpreterException(..),
+    MachineState(..),
 ) where
 
 import Stg.Interpreter.Internal

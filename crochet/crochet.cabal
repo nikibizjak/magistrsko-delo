@@ -26,6 +26,7 @@ executable crochet
         Stg.BorrowCheck
         Stg.Interpreter.Internal
         Stg.Interpreter.Evaluation
+        Stg.Interpreter.Utils
         Stg.Interpreter
     build-depends:
         base == 4.17.2.1,

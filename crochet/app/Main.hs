@@ -57,6 +57,6 @@ execute contents =
                                     case interpreterResult of
                                         Left (InterpreterException exception) ->
                                             putStrLn $ "[ ] Interpreter exception: " ++ exception
-                                        Right result -> do
+                                        Right (MachineState { machineExpression = result}) -> do
                                             putStr "[x] Interpreter result: "
                                             putStrLn $ pretty result

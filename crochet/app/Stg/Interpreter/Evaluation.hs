@@ -15,53 +15,128 @@ module Stg.Interpreter.Evaluation where
 
 import Stg.Stg
 import Stg.Interpreter.Internal
+import Stg.Pretty
+import qualified Data.Map as Map
 
-evaluate :: Expression -> Stack -> Heap -> Either InterpreterException Expression
-evaluate expression stack heap =
-    case step expression stack heap of
+evaluate :: MachineState -> Either InterpreterException MachineState
+evaluate machineState =
+    case evaluateExpression machineState of
         Failure exception -> Left exception
-        Done result _ _ -> Right result
-        Step expression' stack' heap' ->
-            evaluate expression' stack' heap'
+        Done machineState' -> Right machineState'
+        Step machineState' ->
+            evaluate machineState'
 
-evaluateDebug :: (Expression -> Stack -> Heap -> IO a) -> Expression -> Stack -> Heap -> IO (Either InterpreterException Expression)
-evaluateDebug debug expression stack heap =
-    case step expression stack heap of
+evaluateDebug :: (MachineState -> IO ()) -> MachineState -> IO (Either InterpreterException MachineState)
+evaluateDebug debug machineState =
+    case evaluateExpression machineState of
         Failure exception -> return $ Left exception
-        Done result _ _ -> return $ Right result
-        Step expression' stack' heap' -> do
-            debug expression' stack' heap'
-            evaluateDebug debug expression' stack' heap'
+        Done machineState' -> return $ Right machineState'
+        Step machineState' -> do
+            debug machineState'
+            evaluateDebug debug machineState'
 
-run :: Program -> Either InterpreterException Expression
-run program =
-    evaluate (Atom $ Literal $ Integer 1) [] []
+run = todo
+-- run :: Program -> Either InterpreterException MachineState
+-- run program =
+--     -- Find the main function 
+--     let mainFunctions = filter(\(Binding name value) -> name == "main") program in
+--         case mainFunctions of
+--             [] -> Left $ InterpreterException "No main function"
+--             [ mainFunction ] ->
+--                 -- There is exactly *one* main function. Execute it.
+--                 let
+--                     initialState = MachineState {}
+--                     environment = []
+--                 in
+--                     evaluate initialState environment
+--             _ -> Left $ InterpreterException "More than one main function"
+--     --in
+--     --    Failure (InterpreterException "nope")
+--     -- let
+--     --     initialState = MachineState {
 
-runDebug :: (Expression -> Stack -> Heap -> IO a) -> Program -> IO (Either InterpreterException Expression)
+--     --     }
+--     --     environment = []
+--     -- in
+--     --     evaluate initialState environment
+
+allocateMany initialHeap initialHeapPointer initialEnvironment =
+    foldr (\(Binding name object) (heap, heapPointer, environment) ->
+        let
+            environment' = Map.insert name heapPointer environment
+            (heap', heapPointer') = allocate heap heapPointer (HeapObject object Map.empty)
+        in
+            (heap', heapPointer', environment')
+    ) (initialHeap, initialHeapPointer, initialEnvironment)
+
+runDebug :: (MachineState -> IO ()) -> Program -> IO (Either InterpreterException MachineState)
 runDebug debug program =
-    evaluateDebug debug (Atom $ Literal $ Integer 1) [] []
+    let
+        (initialHeap, initialHeapPointer, initialEnvironment) =
+            allocateMany Map.empty (HeapAddress 0) Map.empty program
+    in
+        case Map.lookup "main" initialEnvironment of
+            Nothing -> return $ Left $ InterpreterException "Undefined function 'main'."
+            Just (HeapAddress address) ->
+                let
+                    initialState = MachineState {
+                        machineExpression = Atom (Literal (Address address)),
+                        machineStack = [],
+                        machineHeap = initialHeap,
+                        machineHeapPointer = initialHeapPointer,
+                        machineEnvironment = initialEnvironment
+                    }
+                in do
+                    debug initialState
+                    evaluateDebug debug initialState
 
 -- UTILITY FUNCTIONS
-printExpression :: Expression -> Stack -> Heap -> IO ()
-printExpression expression stack heap = do
+printExpression :: MachineState -> IO ()
+printExpression MachineState { machineExpression = expression } = do
     putStr "Expression: "
-    print expression
+    putStrLn $ pretty expression
 
-printStack :: Expression -> Stack -> Heap -> IO ()
-printStack expression stack heap = do
-    putStr "Stack: "
-    print stack
+printEnvironment :: MachineState -> IO ()
+printEnvironment MachineState { machineEnvironment = environment } = do
+    putStrLn "Environment: "
+    putStrLn $ showMap environment
 
-printHeap :: Expression -> Stack -> Heap -> IO ()
-printHeap expression stack heap = do
-    putStr "Heap: "
-    print heap
+printStack :: MachineState -> IO ()
+printStack MachineState { machineStack = stack } = do
+    putStrLn "Stack: "
+    putStrLn (unlines (map show stack))
+
+showMap mapping =
+    let
+        showItem (address, value) =
+            show address ++ " -> " ++ show value
+
+        items = Map.toList mapping
+        lines = map showItem items
+    in
+        unlines lines
+
+printHeap :: MachineState -> IO ()
+printHeap MachineState { machineHeap = heap } = do
+    putStrLn "Heap: "
+    putStrLn $ showMap heap
+
+printSeparator =
+    putStrLn "------------------------------------------------------------"
+
+printAll :: MachineState -> IO ()
+printAll state = do
+    printSeparator
+    printExpression state
+    printEnvironment state
+    printStack state
+    printHeap state
 
 -- Print only the expression at each step of the evaluation.
-runDebugExpression :: Program -> IO (Either InterpreterException Expression)
+runDebugExpression :: Program -> IO (Either InterpreterException MachineState)
 runDebugExpression = runDebug printExpression
 
 -- Print all debug information (expression, stack and heap) at each step of the
 -- evaluation.
-runDebugAll :: Program -> IO (Either InterpreterException Expression)
-runDebugAll = runDebug (printExpression >> printStack >> printHeap)
+runDebugAll :: Program -> IO (Either InterpreterException MachineState)
+runDebugAll = runDebug printAll
