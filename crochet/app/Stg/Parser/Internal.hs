@@ -90,7 +90,7 @@ algebraicAlternative =
 alternative :: Parser Alternative
 alternative =
     exactly '|' >> spaces >>
-    oneOf [ algebraicAlternative, defaultAlternative ]
+    oneOf [ defaultAlternative, algebraicAlternative ]
 
 caseOf :: Parser Expression
 caseOf =
