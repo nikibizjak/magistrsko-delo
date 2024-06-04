@@ -3,6 +3,7 @@ module Stg.Interpreter (
     runDebug,
     runDebugExpression,
     runDebugAll,
+    runDebugWriteAllToFile,
     InterpreterException(..),
     MachineState(..),
 ) where

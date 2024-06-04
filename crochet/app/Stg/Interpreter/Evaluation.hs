@@ -17,6 +17,8 @@ import Stg.Stg
 import Stg.Interpreter.Internal
 import Stg.Pretty
 import qualified Data.Map as Map
+import GHC.IO.Handle (hPutStr)
+import GHC.IO.Handle.Text (hPutStrLn)
 
 evaluate :: MachineState -> Either InterpreterException MachineState
 evaluate machineState =
@@ -35,30 +37,25 @@ evaluateDebug debug machineState =
             debug machineState'
             evaluateDebug debug machineState'
 
-run = todo
--- run :: Program -> Either InterpreterException MachineState
--- run program =
---     -- Find the main function 
---     let mainFunctions = filter(\(Binding name value) -> name == "main") program in
---         case mainFunctions of
---             [] -> Left $ InterpreterException "No main function"
---             [ mainFunction ] ->
---                 -- There is exactly *one* main function. Execute it.
---                 let
---                     initialState = MachineState {}
---                     environment = []
---                 in
---                     evaluate initialState environment
---             _ -> Left $ InterpreterException "More than one main function"
---     --in
---     --    Failure (InterpreterException "nope")
---     -- let
---     --     initialState = MachineState {
-
---     --     }
---     --     environment = []
---     -- in
---     --     evaluate initialState environment
+run :: Program -> Either InterpreterException MachineState
+run program =
+    let
+        (initialHeap, initialHeapPointer, initialEnvironment) =
+            allocateMany Map.empty (HeapAddress 0) Map.empty program
+    in
+        case Map.lookup "main" initialEnvironment of
+            Nothing -> Left $ InterpreterException "Undefined function 'main'."
+            Just (HeapAddress address) ->
+                let
+                    initialState = MachineState {
+                        machineExpression = Atom (Literal (Address address)),
+                        machineStack = [],
+                        machineHeap = initialHeap,
+                        machineHeapPointer = initialHeapPointer,
+                        machineEnvironment = initialEnvironment
+                    }
+                in
+                    evaluate initialState
 
 allocateMany initialHeap initialHeapPointer initialEnvironment =
     foldr (\(Binding name object) (heap, heapPointer, environment) ->
@@ -132,6 +129,33 @@ printAll state = do
     printStack state
     printHeap state
 
+writeSeparator handle =
+    hPutStrLn handle "------------------------------------------------------------"
+
+writeExpression handle MachineState { machineExpression = expression } = do
+    hPutStr handle "Expression: "
+    hPutStrLn handle $ pretty expression
+
+writeEnvironment handle MachineState { machineEnvironment = environment } = do
+    hPutStrLn handle "Environment: "
+    hPutStrLn handle $ showMap environment
+
+writeStack handle MachineState { machineStack = stack } = do
+    hPutStrLn handle "Stack: "
+    hPutStrLn handle $ unlines (map show stack)
+
+writeHeap handle MachineState { machineHeap = heap } = do
+    hPutStrLn handle  "Heap: "
+    hPutStrLn handle $ showMap heap
+
+-- writeAllToFile :: GHC.IO.Handle.Types.Handle -> MachineState -> IO ()
+writeAllToFile handle state = do
+    writeSeparator handle
+    writeExpression handle state
+    writeEnvironment handle state
+    writeStack handle state
+    writeHeap handle state
+
 -- Print only the expression at each step of the evaluation.
 runDebugExpression :: Program -> IO (Either InterpreterException MachineState)
 runDebugExpression = runDebug printExpression
@@ -140,3 +164,5 @@ runDebugExpression = runDebug printExpression
 -- evaluation.
 runDebugAll :: Program -> IO (Either InterpreterException MachineState)
 runDebugAll = runDebug printAll
+
+runDebugWriteAllToFile handle = runDebug (writeAllToFile handle)

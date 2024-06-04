@@ -1,0 +1,5 @@
+Usage:
+  crochet [--debug-interpreter <debug_file>] <file>
+
+Options:
+  --debug-interpreter=<debug_file>      Output debugging information during program evaluation.
