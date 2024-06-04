@@ -8,5 +8,6 @@ module Stg.Interpreter (
     MachineState(..),
 ) where
 
+import Stg.Interpreter.Types
 import Stg.Interpreter.Internal
 import Stg.Interpreter.Evaluation

@@ -19,6 +19,8 @@ import Stg.Pretty
 import qualified Data.Map as Map
 import GHC.IO.Handle (hPutStr)
 import GHC.IO.Handle.Text (hPutStrLn)
+import Stg.Interpreter.Debug
+import Stg.Interpreter.Types
 
 evaluate :: MachineState -> Either InterpreterException MachineState
 evaluate machineState =
@@ -129,32 +131,8 @@ printAll state = do
     printStack state
     printHeap state
 
-writeSeparator handle =
-    hPutStrLn handle "------------------------------------------------------------"
-
-writeExpression handle MachineState { machineExpression = expression } = do
-    hPutStr handle "Expression: "
-    hPutStrLn handle $ pretty expression
-
-writeEnvironment handle MachineState { machineEnvironment = environment } = do
-    hPutStrLn handle "Environment: "
-    hPutStrLn handle $ showMap environment
-
-writeStack handle MachineState { machineStack = stack } = do
-    hPutStrLn handle "Stack: "
-    hPutStrLn handle $ unlines (map show stack)
-
-writeHeap handle MachineState { machineHeap = heap } = do
-    hPutStrLn handle  "Heap: "
-    hPutStrLn handle $ showMap heap
-
--- writeAllToFile :: GHC.IO.Handle.Types.Handle -> MachineState -> IO ()
 writeAllToFile handle state = do
-    writeSeparator handle
-    writeExpression handle state
-    writeEnvironment handle state
-    writeStack handle state
-    writeHeap handle state
+    hPutStr handle $ machineStateToHtml state
 
 -- Print only the expression at each step of the evaluation.
 runDebugExpression :: Program -> IO (Either InterpreterException MachineState)
