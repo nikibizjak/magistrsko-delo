@@ -28,13 +28,14 @@ filenameFromMachineState state@MachineState {
     machineStep = i
 } = filenameFromStep i
     
-debugHtml :: FilePath -> MachineState -> IO ()
+debugHtml :: FilePath -> MachineState -> IO MachineState
 debugHtml directory state@MachineState {
     machineStep = i
 } = do
     let html = machineStateToHtml state
     let filename = filenameFromMachineState state
     writeToFileInDirectory directory filename html
+    return state
 
 machineStateToHtml MachineState {
     machineExpression = expression,

@@ -56,5 +56,5 @@ run debug program =
             debug initialState
             evaluate debug initialState
 
-noDebug :: MachineState -> IO ()
-noDebug state = return ()
+noDebug :: MachineState -> IO MachineState
+noDebug = return

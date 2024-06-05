@@ -1,8 +1,7 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module Main where
 
-import Control.Monad (when)
+import ArgumentParser
+import Control.Monad (when, (>=>))
 import Stg.BorrowCheck
 import Stg.FreeVariables
 import Stg.Interpreter
@@ -12,30 +11,32 @@ import Stg.Ownership
 import Stg.Parser
 import Stg.Pretty
 import Stg.Stg
-import System.Console.Docopt
-import System.Environment (getArgs)
-import System.IO (openFile, hClose)
-import GHC.IO.IOMode (IOMode(..))
 
-patterns :: Docopt
-patterns = [docoptFile|USAGE.txt|]
-
-getArgOrExit = getArgOrExitWith patterns
-
-main :: IO ()
 main = do
-  arguments <- parseArgsOrExit patterns =<< getArgs
+  arguments <- parseArguments
+  runInterpreter arguments
 
-  when (arguments `isPresent` argument "file") $ do
-    filename <- arguments `getArgOrExit` argument "file"
-    contents <- readFile filename
+runInterpreter
+  arguments@Options
+    { debugInterpreter = debugInterpreter,
+      debugDirectory = debugDirectory,
+      inputFile = inputFile
+    } = do
+    let debugFunction = noDebug
 
-    let debugDirectory = getArg arguments (longOption "debug-interpreter")
+    let debugFunction' =
+          if debugInterpreter
+            then debugFunction >=> debugPrint
+            else debugFunction
 
-    -- Execute the program
-    execute contents debugDirectory
+    let debugFunction'' = case debugDirectory of
+          Just directory -> debugFunction' >=> debugHtml directory
+          Nothing -> debugFunction'
 
-execute contents debugDirectory =
+    contents <- readFile inputFile
+    execute debugFunction'' contents
+
+execute debugFunction contents =
   case parse contents of
     Left (ParserException exception) ->
       putStrLn $ "[ ] Parsing AST tree exception: " ++ exception
@@ -68,22 +69,9 @@ execute contents debugDirectory =
                   -- putStrLn "[x] Move check"
                   -- case debugInterpreter of
 
-                    case debugDirectory of
-
-                      Nothing -> do
-                        result <- run noDebug program
-                        case result of
-                          Left (InterpreterException exception) ->
-                            putStrLn $ "[ ] Interpreter exception: " ++ exception
-                          Right (MachineState {machineExpression = result}) -> do
-                            putStrLn $ pretty result
-                        
-                      Just directory -> do
-                        
-                        interpreterResult <- run (debugHtml directory) program
-                        case interpreterResult of
-                          Left (InterpreterException exception) ->
-                            putStrLn $ "[ ] Interpreter exception: " ++ exception
-                          Right (MachineState {machineExpression = result}) -> do
-                            -- putStr "[x] Interpreter result: "
-                            putStrLn $ pretty result
+                  result <- run debugFunction program
+                  case result of
+                    Left (InterpreterException exception) ->
+                      putStrLn $ "[ ] Interpreter exception: " ++ exception
+                    Right (MachineState {machineExpression = result}) -> do
+                      putStrLn $ pretty result

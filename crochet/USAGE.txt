@@ -1,5 +1,0 @@
-Usage:
-  crochet [--debug-interpreter <directory>] <file>
-
-Options:
-  --debug-interpreter=<directory>      Where to output debugging information during program evaluation.
