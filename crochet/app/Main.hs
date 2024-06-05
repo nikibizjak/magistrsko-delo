@@ -30,12 +30,12 @@ main = do
     filename <- arguments `getArgOrExit` argument "file"
     contents <- readFile filename
 
-    let debugFile = getArg arguments (longOption "debug-interpreter")
+    let debugDirectory = getArg arguments (longOption "debug-interpreter")
 
     -- Execute the program
-    execute contents debugFile
+    execute contents debugDirectory
 
-execute contents debugInterpreter =
+execute contents debugDirectory =
   case parse contents of
     Left (ParserException exception) ->
       putStrLn $ "[ ] Parsing AST tree exception: " ++ exception
@@ -68,24 +68,22 @@ execute contents debugInterpreter =
                   -- putStrLn "[x] Move check"
                   -- case debugInterpreter of
 
-                    case debugInterpreter of
+                    case debugDirectory of
 
                       Nothing -> do
-                        case run program of
+                        result <- run noDebug program
+                        case result of
                           Left (InterpreterException exception) ->
                             putStrLn $ "[ ] Interpreter exception: " ++ exception
                           Right (MachineState {machineExpression = result}) -> do
                             putStrLn $ pretty result
                         
-                      Just debugFile -> do
-                        handle <- openFile debugFile WriteMode
+                      Just directory -> do
                         
-                        interpreterResult <- runDebugWriteAllToFile handle program
+                        interpreterResult <- run (debugHtml directory) program
                         case interpreterResult of
                           Left (InterpreterException exception) ->
                             putStrLn $ "[ ] Interpreter exception: " ++ exception
                           Right (MachineState {machineExpression = result}) -> do
                             -- putStr "[x] Interpreter result: "
                             putStrLn $ pretty result
-                        
-                        hClose handle

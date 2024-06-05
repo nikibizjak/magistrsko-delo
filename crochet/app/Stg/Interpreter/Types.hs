@@ -40,6 +40,7 @@ data MachineState = MachineState
     , machineHeap :: Heap
     , machineHeapPointer :: HeapAddress
     , machineEnvironment :: Environment
+    , machineStep :: Int
     }
 
 -- Show implementation

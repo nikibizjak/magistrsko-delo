@@ -1,5 +1,5 @@
 Usage:
-  crochet [--debug-interpreter <debug_file>] <file>
+  crochet [--debug-interpreter <directory>] <file>
 
 Options:
-  --debug-interpreter=<debug_file>      Output debugging information during program evaluation.
+  --debug-interpreter=<directory>      Where to output debugging information during program evaluation.

@@ -11,15 +11,17 @@ throw text = Failure $ InterpreterException text
 todo :: InterpreterResult
 todo = throw "Not implemented yet"
 
-step expression stack heap heapPointer environment =
+step expression stack heap heapPointer environment i =
     Step $ MachineState {
         machineExpression = expression,
         machineStack = stack,
         machineHeap = heap,
         machineHeapPointer = heapPointer,
-        machineEnvironment = environment
+        machineEnvironment = environment,
+        machineStep = i
     }
 
+-- Memory management
 allocate :: Heap -> HeapAddress -> HeapObject -> (Heap, HeapAddress)
 allocate heap heapPointer@(HeapAddress heapPointerAddress) heapObject =
     let
@@ -28,6 +30,16 @@ allocate heap heapPointer@(HeapAddress heapPointerAddress) heapObject =
     in
         (heap', heapPointer')
 
+allocateMany :: Foldable t => Heap -> HeapAddress -> Map.Map String HeapAddress -> t Binding -> (Heap, HeapAddress, Map.Map String HeapAddress)
+allocateMany initialHeap initialHeapPointer initialEnvironment =
+    foldr (\(Binding name object) (heap, heapPointer, environment) ->
+        let
+            environment' = Map.insert name heapPointer environment
+            (heap', heapPointer') = allocate heap heapPointer (HeapObject object Map.empty)
+        in
+            (heap', heapPointer', environment')
+    ) (initialHeap, initialHeapPointer, initialEnvironment)
+
 -- Rule LET
 evaluateExpression :: MachineState -> InterpreterResult
 evaluateExpression MachineState {
@@ -35,7 +47,8 @@ evaluateExpression MachineState {
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     let
         -- Allocate a new heap closure
@@ -44,7 +57,7 @@ evaluateExpression MachineState {
 
         (heap', heapPointer') = allocate heap heapPointer heapObject
     in
-        step body stack heap' heapPointer' environment'
+        step body stack heap' heapPointer' environment' (i + 1)
 
 -- Rule CASECON / CASEANY
 evaluateExpression MachineState {
@@ -52,7 +65,8 @@ evaluateExpression MachineState {
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } = -- | Map.member (HeapAddress address) heap
     case Map.lookup (HeapAddress address) heap of
         Nothing -> throw "The address doesn't point to CON object."
@@ -69,7 +83,7 @@ evaluateExpression MachineState {
                             -- Replace variable x in body with the literal
                             -- value v (e.g. body[v / x]).
                             let environment' = Map.insert variable (HeapAddress address) environment in
-                                step body stack heap heapPointer environment'
+                                step body stack heap heapPointer environment' (i + 1)
                         _ -> throw $ "No algebraic alternatives match constructor '" ++ name ++ "' and no default alternative provided."
 
 -- Rule CASEANY
@@ -78,14 +92,15 @@ evaluateExpression MachineState {
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     case getDefaultAlternative alternatives of
         Just (DefaultAlternative variable body) ->
             -- Replace variable x in body with the literal
             -- value v (e.g. body[v / x]).
             let environment' = Map.insert variable (HeapAddress n) environment in
-                step body stack heap heapPointer environment'
+                step body stack heap heapPointer environment' (i + 1)
         _ -> throw "Case of expression has no default alternative"
 
 -- Rule CASE
@@ -94,12 +109,13 @@ evaluateExpression MachineState {
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     let
         stack' = CaseContinuation alternatives : stack
     in
-        step scrutinee stack' heap heapPointer environment
+        step scrutinee stack' heap heapPointer environment (i + 1)
 
 -- Rule RET
 evaluateExpression MachineState {
@@ -107,10 +123,11 @@ evaluateExpression MachineState {
     machineStack = (CaseContinuation alternatives) : stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     -- TODO: Check if heap[address] is a value!
-    step (CaseOf atom alternatives) stack heap heapPointer environment
+    step (CaseOf atom alternatives) stack heap heapPointer environment (i + 1)
 
 -- Rule RET
 evaluateExpression MachineState {
@@ -118,9 +135,10 @@ evaluateExpression MachineState {
     machineStack = (CaseContinuation alternatives) : stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
-    step (CaseOf atom alternatives) stack heap heapPointer environment
+    step (CaseOf atom alternatives) stack heap heapPointer environment (i + 1)
 
 -- Rule RET
 -- evaluateExpression MachineState {
@@ -141,12 +159,13 @@ evaluateExpression MachineState {
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     case Map.lookup name environment of
         Nothing -> throw $ "Variable '" ++ name ++ "' not in scope."
         Just (HeapAddress address) ->
-            step (Atom (Literal (Address address))) stack heap heapPointer environment
+            step (Atom (Literal (Address address))) stack heap heapPointer environment (i + 1)
 
 -- Rule THUNK
 evaluateExpression MachineState {
@@ -154,7 +173,8 @@ evaluateExpression MachineState {
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } | case Map.lookup (HeapAddress address) heap of
         Just (HeapObject (Thunk _) _) -> True
         _ -> False
@@ -164,7 +184,7 @@ evaluateExpression MachineState {
             stack' = UpdateContinuation (HeapAddress address) : stack
             heap' = Map.insert (HeapAddress address) (HeapObject BlackHole Map.empty) heap
         in
-            step expression stack' heap' heapPointer environment
+            step expression stack' heap' heapPointer environment (i + 1)
 
 -- Rule UPDATE
 evaluateExpression MachineState {
@@ -172,7 +192,8 @@ evaluateExpression MachineState {
     machineStack = (UpdateContinuation updateAddress) : stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     -- TODO: Check if H[address] is a value
     case Map.lookup (HeapAddress address) heap of
@@ -180,13 +201,14 @@ evaluateExpression MachineState {
             let
                 heap' = Map.insert updateAddress heapObject heap
             in
-                step expression stack heap' heapPointer environment
+                step expression stack heap' heapPointer environment (i + 1)
 
 evaluateExpression state@MachineState {
     machineExpression = expression,
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineStep = i
 } =
     Done state
