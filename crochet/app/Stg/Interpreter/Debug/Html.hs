@@ -64,6 +64,7 @@ machineStateToHtml MachineState {
             H.a ! A.href (toValue next) $ "Next"
 
             renderExpression expression
+            renderEnvironment environment
             renderStack stack
             renderHeap heap
 
@@ -72,7 +73,7 @@ renderEnvironment environment = do
         let environmentItems = Map.toList environment
         forM_ environmentItems (\(name, address) -> H.tr $ do
             H.td $ toHtml name
-            H.td $ toHtml $ show address
+            H.td $ code $ toHtml $ show address
             )
 
 renderHeap heap = do
@@ -87,8 +88,8 @@ renderHeap heap = do
         H.tbody $ do
             let heapItems = Map.toList heap
             forM_ heapItems (\(address, HeapObject object environment) -> H.tr $ do
-                H.td $ toHtml $ show address
-                H.td $ toHtml $ pretty object
+                H.td $ code $ toHtml $ show address
+                H.td $ code $ toHtml $ pretty object
                 H.td $ renderEnvironment environment)
 
 renderStack stack = do
@@ -97,8 +98,8 @@ renderStack stack = do
         H.thead $ H.tr $ H.th "Frame"
         H.tbody $ do
             forM_ stack (\continuation -> H.tr $ do
-                H.td $ toHtml $ show continuation)
+                H.td $ code $ toHtml $ show continuation)
 
 renderExpression expression = do
     H.h2 "Expression"
-    p $ toHtml (pretty expression)
+    code $ toHtml (pretty expression)

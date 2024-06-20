@@ -17,7 +17,6 @@ instance FreeVariables Atom where
   freeVariables (Variable v) =
     Set.singleton v
   freeVariables (Literal l) = freeVariables l
-  freeVariables (Borrow v) = Set.singleton v
 
 instance FreeVariables Expression where
   freeVariables (Atom atom) = freeVariables atom

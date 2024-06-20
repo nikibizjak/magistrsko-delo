@@ -35,7 +35,6 @@ instance Moves Expression where
 instance Moves Atom where
     moves (Variable name) = Set.singleton name
     moves (Literal _) = Set.empty
-    moves (Borrow _) = Set.empty
 
 
 movesMany :: Foldable t => Moves a => t a -> Set.Set Variable

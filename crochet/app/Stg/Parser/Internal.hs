@@ -37,10 +37,10 @@ variable =
       then fail
       else return name
 
-borrow :: Parser Atom
-borrow =
-  exactly '&' >> spaces >> variable >>= \name ->
-    return $ Borrow name
+-- borrow :: Parser Atom
+-- borrow =
+--   exactly '&' >> spaces >> variable >>= \name ->
+--     return $ Borrow name
 
 primitiveInteger :: Parser Int
 primitiveInteger =
@@ -59,7 +59,7 @@ atom :: Parser Atom
 atom =
   oneOf
     [
-      borrow,
+      -- borrow,
       variable >>= \value -> return $ Variable value,
       literal >>= \value -> return $ Literal value
     ]

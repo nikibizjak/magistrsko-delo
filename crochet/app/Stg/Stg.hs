@@ -11,7 +11,7 @@ type Variable = String
 data Atom
     = Variable Variable
     | Literal Literal
-    | Borrow Variable
+    -- | Borrow Variable
     deriving (Show, Eq)
 
 data FunctionArity
@@ -43,6 +43,7 @@ data Object
     | Constructor String [Atom]
     | Thunk Expression
     | BlackHole
+    | Indirection Int
     deriving (Show, Eq)
 
 data Binding =

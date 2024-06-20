@@ -35,7 +35,6 @@ instance Borrows Expression where
 instance Borrows Atom where
     borrows (Variable _) = Set.empty
     borrows (Literal _) = Set.empty
-    borrows (Borrow name) = Set.singleton name
 
 
 borrowsMany :: Foldable t => Borrows a => t a -> Set.Set Variable

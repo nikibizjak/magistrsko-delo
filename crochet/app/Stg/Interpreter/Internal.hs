@@ -4,6 +4,7 @@ import Stg.Interpreter.Types
 import Stg.Stg
 import Stg.Interpreter.Utils
 import qualified Data.Map as Map
+import Debug.Trace
 
 throw :: String -> InterpreterResult
 throw text = Failure $ InterpreterException text
@@ -20,6 +21,17 @@ step expression stack heap heapPointer environment i =
         machineEnvironment = environment,
         machineStep = i
     }
+
+resolveVariable environment variable =
+    case Map.lookup variable environment of
+        Just address -> address
+
+getAddress :: Environment -> Atom -> HeapAddress
+getAddress environment atom =
+    case atom of
+        Literal (Integer n) -> HeapAddress n
+        Literal (Address address) -> HeapAddress address
+        Variable name -> resolveVariable environment name
 
 -- Memory management
 allocate :: Heap -> HeapAddress -> HeapObject -> (Heap, HeapAddress)
@@ -71,13 +83,21 @@ evaluateExpression MachineState {
     case Map.lookup (HeapAddress address) heap of
         Nothing -> throw "The address doesn't point to CON object."
         Just (HeapObject (Constructor name arguments) closureEnvironment) ->
-            -- Rule CASECON
             case getAlgebraicAlternative name alternatives of
-                Just (AlgebraicAlternative constructor arguments body) ->
-                    -- Is there an alternative with constructor with name [name]?
-                    todo
+                
+                -- Rule CASECON
+                Just (AlgebraicAlternative constructor parameters body) ->
+                    -- There is an alternative with constructor [name].
+                    let
+                        environment' = Map.union environment closureEnvironment
+                        
+                        newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
+                        environment'' = Map.union environment' newVariables
+                    in
+                        step body stack heap heapPointer environment'' (i + 1)
+                
+                -- Rule CASEANY
                 _ ->
-                    -- Rule CASEANY
                     case getDefaultAlternative alternatives of
                         Just (DefaultAlternative variable body) ->
                             -- Replace variable x in body with the literal
@@ -140,19 +160,6 @@ evaluateExpression MachineState {
 } =
     step (CaseOf atom alternatives) stack heap heapPointer environment (i + 1)
 
--- Rule RET
--- evaluateExpression MachineState {
---     machineExpression = atom@(Atom (Variable name)),
---     machineStack = (CaseContinuation alternatives) : stack,
---     machineHeap = heap,
---     machineHeapPointer = heapPointer,
---     machineEnvironment = environment
--- } =
---     case lookup name environment of
---         Nothing -> throw $ "Variable '" ++ name ++ "' not in scope."
---         Just (HeapAddress address) ->
---             step (CaseOf (Atom $ Literal $ Address address) alternatives) stack heap heapPointer environment
-
 -- Custom rule VAR
 evaluateExpression MachineState {
     machineExpression = (Atom (Variable name)),
@@ -186,6 +193,24 @@ evaluateExpression MachineState {
         in
             step expression stack' heap' heapPointer environment (i + 1)
 
+-- Custom rule INDIRECTION
+evaluateExpression MachineState {
+    machineExpression = (Atom (Literal (Address address))),
+    machineStack = stack,
+    machineHeap = heap,
+    machineHeapPointer = heapPointer,
+    machineEnvironment = environment,
+    machineStep = i
+} | case Map.lookup (HeapAddress address) heap of
+        Just (HeapObject (Indirection _) _) -> True
+        _ -> False
+    =
+        let
+            Just (HeapObject (Indirection otherAddress) _) = Map.lookup (HeapAddress address) heap
+            expression' = Atom (Literal (Address otherAddress))
+        in
+            step expression' stack heap heapPointer environment (i + 1)
+
 -- Rule UPDATE
 evaluateExpression MachineState {
     machineExpression = expression@(Atom (Literal (Address address))),
@@ -199,9 +224,103 @@ evaluateExpression MachineState {
     case Map.lookup (HeapAddress address) heap of
         Just heapObject ->
             let
-                heap' = Map.insert updateAddress heapObject heap
+                heap' = Map.insert updateAddress (HeapObject (Indirection address) Map.empty) heap
             in
                 step expression stack heap' heapPointer environment (i + 1)
+
+-- Rule KNOWNCALL
+-- evaluateExpression MachineState {
+--     machineExpression = expression@(FunctionApplication function (Known n) arguments),
+--     machineStack = stack,
+--     machineHeap = heap,
+--     machineHeapPointer = heapPointer,
+--     machineEnvironment = environment,
+--     machineStep = i
+-- } | case Map.lookup (getAddress environment function) heap of
+--         Just (HeapObject (Function parameters _) _) -> length parameters == n
+--         _ -> False
+--     =
+--         let
+--             functionAddress = getAddress environment function
+--             Just (HeapObject (Function parameters body) closureEnvironment) = Map.lookup functionAddress heap
+--         in
+--             todo
+
+-- Rule PRIMOP
+
+-- Rule EXACT
+-- evaluateExpression MachineState {
+--     machineExpression = expression@(FunctionApplication function Unknown arguments),
+--     machineStack = stack,
+--     machineHeap = heap,
+--     machineHeapPointer = heapPointer,
+--     machineEnvironment = environment,
+--     machineStep = i
+-- } | case Map.lookup (getAddress environment function) heap of
+--         Just (HeapObject (Function parameters _) _) -> length parameters == length arguments
+--         _ -> False
+--     =
+--         let
+--             functionAddress = getAddress environment function
+--             Just (HeapObject (Function parameters body) closureEnvironment) = Map.lookup functionAddress heap
+--         in
+--             let
+--                 environment' = Map.union environment closureEnvironment
+                
+--                 newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
+--                 environment'' = Map.union environment' newVariables
+--             in
+--                 step body stack heap heapPointer environment'' (i + 1)
+
+-- Rule TCALL
+-- evaluateExpression MachineState {
+--     machineExpression = expression@(FunctionApplication function Unknown arguments),
+--     machineStack = stack,
+--     machineHeap = heap,
+--     machineHeapPointer = heapPointer,
+--     machineEnvironment = environment,
+--     machineStep = i
+-- } | case Map.lookup (getAddress environment function) heap of
+--         Just (HeapObject (Thunk _) _) -> True
+--         _ -> False
+--     =
+--         let
+--             expression' = Atom function
+--             stack' = ApplyContinuation arguments : stack
+--         in
+--             step expression' stack' heap heapPointer environment (i + 1)
+
+-- Rule PCALL
+-- evaluateExpression MachineState {
+--     machineExpression = expression@(FunctionApplication function Unknown arguments),
+--     machineStack = stack,
+--     machineHeap = heap,
+--     machineHeapPointer = heapPointer,
+--     machineEnvironment = environment,
+--     machineStep = i
+-- } | case Map.lookup (getAddress environment function) heap of
+--         Just (HeapObject (Thunk _) _) -> True
+--         _ -> False
+--     =
+--         todo
+
+-- Rule RETFUN
+-- evaluateExpression MachineState {
+--     machineExpression = expression@(Atom (Literal (Address functionAddress))),
+--     machineStack = (ApplyContinuation arguments) : stack,
+--     machineHeap = heap,
+--     machineHeapPointer = heapPointer,
+--     machineEnvironment = environment,
+--     machineStep = i
+-- } | case Map.lookup (HeapAddress functionAddress) heap of
+--         Just (HeapObject (Function _ _) _) -> True
+--         Just (HeapObject (PartialApplication _ _) _) -> True
+--         _ -> False
+--     =
+--         let
+--             expression' = FunctionApplication (Literal (Address functionAddress)) Unknown arguments
+--         in
+--             step expression' stack heap heapPointer environment (i + 1)
 
 evaluateExpression state@MachineState {
     machineExpression = expression,
