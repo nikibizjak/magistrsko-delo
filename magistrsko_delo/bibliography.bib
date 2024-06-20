@@ -284,3 +284,89 @@
 	pages={237--247},
 	year={1993}
 }
+
+@article{orchard2019quantitative,
+	title={Quantitative program reasoning with graded modal types},
+	author={Orchard, Dominic and Liepelt, Vilem-Benjamin and Eades III, Harley},
+	journal={Proceedings of the ACM on Programming Languages},
+	volume={3},
+	number={ICFP},
+	pages={1--30},
+	year={2019},
+	publisher={ACM New York, NY, USA}
+}
+
+@article{10.1145/3649848,
+	author = {Marshall, Daniel and Orchard, Dominic},
+	title = {Functional Ownership through Fractional Uniqueness},
+	year = {2024},
+	issue_date = {April 2024},
+	publisher = {Association for Computing Machinery},
+	address = {New York, NY, USA},
+	volume = {8},
+	number = {OOPSLA1},
+	url = {https://doi.org/10.1145/3649848},
+	doi = {10.1145/3649848},
+	journal = {Proc. ACM Program. Lang.},
+	month = {apr},
+	articleno = {131},
+	numpages = {31},
+	keywords = {borrowing, fractional permissions, graded modal types, ownership}
+}
+
+@misc{Matsakis_2018,
+	url={https://smallcultfollowing.com/babysteps/blog/2018/04/27/an-alias-based-formulation-of-the-borrow-checker/},
+	journal={An alias-based formulation of the borrow checker}, author={Matsakis, Niko},
+	year={2018}
+}
+
+@misc{Matsakis_et_al_2022,
+	title={Non-lexical lifetimes (NLL) fully stable: Rust blog},
+	url={https://blog.rust-lang.org/2022/08/05/nll-by-default.html}, 
+	journal={The Rust Programming Language Blog}, 
+	author={Matsakis, Niko and Nethercote, Nick and Faria, Paul  Daniel and Rakic, Rémy and Wood, David and Jasper, Matthew and Pastorino, Santiago and Klock, Felix},
+	year={2022},
+	month={Aug}
+} 
+
+@article{reed2015patina,
+	title={Patina: A formalization of the Rust programming language},
+	author={Reed, Eric},
+	journal={University of Washington, Department of Computer Science and Engineering, Tech. Rep. UW-CSE-15-03-02},
+	volume={264},
+	year={2015}
+}
+
+@article{10.1145/3158154,
+	author = {Jung, Ralf and Jourdan, Jacques-Henri and Krebbers, Robbert and Dreyer, Derek},
+	title = {RustBelt: securing the foundations of the Rust programming language},
+	year = {2017},
+	issue_date = {January 2018},
+	publisher = {Association for Computing Machinery},
+	address = {New York, NY, USA},
+	volume = {2},
+	number = {POPL},
+	url = {https://doi.org/10.1145/3158154},
+	doi = {10.1145/3158154},
+	abstract = {Rust is a new systems programming language that promises to overcome the seemingly fundamental tradeoff between high-level safety guarantees and low-level control over resource management. Unfortunately, none of Rust's safety claims have been formally proven, and there is good reason to question whether they actually hold. Specifically, Rust employs a strong, ownership-based type system, but then extends the expressive power of this core type system through libraries that internally use unsafe features. In this paper, we give the first formal (and machine-checked) safety proof for a language representing a realistic subset of Rust. Our proof is extensible in the sense that, for each new Rust library that uses unsafe features, we can say what verification condition it must satisfy in order for it to be deemed a safe extension to the language. We have carried out this verification for some of the most important libraries that are used throughout the Rust ecosystem.},
+	journal = {Proc. ACM Program. Lang.},
+	month = {dec},
+	articleno = {66},
+	numpages = {34},
+	keywords = {type systems, separation logic, logical relations, concurrency, Rust}
+}
+
+@InProceedings{10.1007/978-3-030-99336-8_13,
+	author="Marshall, Daniel
+	and Vollmer, Michael
+	and Orchard, Dominic",
+	editor="Sergey, Ilya",
+	title="Linearity and Uniqueness: An Entente Cordiale",
+	booktitle="Programming Languages and Systems",
+	year="2022",
+	publisher="Springer International Publishing",
+	address="Cham",
+	pages="346--375",
+	abstract="Substructural type systems are growing in popularity because they allow for a resourceful interpretation of data which can be used to rule out various software bugs. Indeed, substructurality is finally taking hold in modern programming; Haskell now has linear types roughly based on Girard's linear logic but integrated via graded function arrows, Clean has uniqueness types designed to ensure that values have at most a single reference to them, and Rust has an intricate ownership system for guaranteeing memory safety. But despite this broad range of resourceful type systems, there is comparatively little understanding of their relative strengths and weaknesses or whether their underlying frameworks can be unified. There is often confusion about whether linearity and uniqueness are essentially the same, or are instead `dual' to one another, or somewhere in between. This paper formalises the relationship between these two well-studied but rarely contrasted ideas, building on two distinct bodies of literature, showing that it is possible and advantageous to have both linear and unique types in the same type system. We study the guarantees of the resulting system and provide a practical implementation in the graded modal setting of the Granule language, adding a third kind of modality alongside coeffect and effect modalities. We then demonstrate via a benchmark that our implementation benefits from expected efficiency gains enabled by adding uniqueness to a language that already has a linear basis.",
+	isbn="978-3-030-99336-8"
+}

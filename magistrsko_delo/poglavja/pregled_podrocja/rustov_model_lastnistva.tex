@@ -1,0 +1,66 @@
+\section{Rustov model lastništva}
+
+Programski jezik Rust je namenjen nizkonivojskemu programiranju, tj. programiranju sistemske programske opreme. Kot tak mora omogočati hitro in predvidljivo sproščanje pomnilnika, zato avtomatični čistilnik pomnilnika ne pride v poštev. Rust namesto tega implementira model lastništva~\cite{klabnik2023rust}, pri katerem zna med \textit{prevajanjem} s posebnimi pravili zagotoviti, da se pomnilnik objektov na kopici avtomatično sprosti, kadar jih program več ne potrebuje. Po hitrosti delovanja se tako lahko kosa s programskim jezikom C, pri tem pa zagotavlja varnejše upravljanje s pomnilnikom kot C.
+
+Rust doseže varnost pri upravljanju pomnilnika s pomočjo principa izključitve~\cite{Jung}. V poljubnem trenutku za neko vrednost na pomnilniku velja natanko ena izmed dveh možnosti:
+
+\begin{itemize}
+	\itemsep 0em
+	\item Vrednost lahko mutiramo preko \textit{natanko enega} unikatnega kazalca
+	\item Vrednost lahko beremo preko poljubno mnogo kazalcev
+\end{itemize}
+
+\subsubsection{Premik}
+
+Eden izmed najpomembnejših konceptov v Rustu je lastništvo. Ta zagotavlja, da si vsako vrednost na pomnilniku lasti natanko ena spremenljivka. Kadar gre ta izven dosega (angl. out-of-scope), lahko tako Rust ustrezno počisti pomnilnik. Ob klicu funkcije se lastništvo nad argumenti prenese v funkcijo, ta pa postane odgovorna za čiščenje pomnilnika. Naslednji primer prikazuje program, ki se v Rustu ne prevede zaradi težav z lastništvom.
+
+\begin{rust-failure}
+	let number = Complex(0, 1);
+	let a = number;
+	let b = number;  // Napaka: use of moved value: `number`
+\end{rust-failure}
+
+Spremenljivka \texttt{a} prevzame lastništvo nad vrednostjo \texttt{number}. Pravimo tudi, da je bila vrednost \texttt{number} \textit{premaknjena} v spremenljivko \texttt{a}. Ob premiku postane spremenljivka \texttt{number} neveljavna, zato pri ponovnem premiku v spremenljivko \texttt{b}, prevajalnik javi napako.
+
+\begin{rust-failure}
+	let number = Complex(1, 0);
+	f(number);
+	let x = number;  // Napaka: use of moved value: `number`
+\end{rust-failure}
+
+V zgornjem primeru se spremenljivka \texttt{number} pojavi kot argument funkciji \texttt{f}. Lastništvo spremenljivke \texttt{number} se ob klicu funkcije prenese v funkcijo in ta postane tudi odgovorna za čiščenje njenega pomnilnika. Ob ponovnem premiku v spremenljivko \texttt{x}, prevajalnik javi napako.
+
+\subsubsection{Izposoja}
+
+Drugi koncept, ki ga definira Rust je \textit{izposoja}. Ta omogoča \textit{deljenje} (angl. aliasing) vrednosti na pomnilniku. Izposoje so lahko spremenljive (angl. mutable) \texttt{\&mut x} ali nespremenljive (angl. immutable) \texttt{\&x}. V danem trenutku je lahko ena spremenljivka izposojena nespremenljivo oziroma samo za branje (angl. read-only) večkrat, spremenljivo pa natanko enkrat.
+
+Naslednji primer se v Rustu uspešno prevede, ker sta obe izposoji nespremenljivi. Vrednosti spremenljivk \texttt{a} in \texttt{b} lahko le beremo, ne moremo pa jih spreminjati.
+
+\begin{rust-success}
+	let number = Complex(2, 1);
+	let a = &number;
+	let b = &number;
+\end{rust-success}
+
+V naslednjem primeru skušamo ustvariti dve mutable referenci na spremenljivko \texttt{number}. Zaradi principa izključevanja to ni mogoče, zato prevajalnik javi napako.
+
+\begin{rust-failure}
+	let mut number = Complex(1, 2);
+	let a = &mut number;
+	let b = &mut number;  // Napaka: cannot borrow `number` as mutable
+	// more than once at a time
+\end{rust-failure}
+
+Prav tako ni veljavno ustvariti mutabilne reference na spremenljivko, dokler nanjo obstaja kakršnakoli druga referenca.
+
+\begin{rust-failure}
+	let mut number = Complex(0, 0);
+	let a = &number;
+	let b = &mut number;  // Napaka: cannot borrow `number` as mutable
+	// because it is also borrowed as immutable
+\end{rust-failure}
+
+% non lexical lifetimes
+V trenutni različici Rusta 2018 bi se primer [TODO] še vedno uspešno prevedel. Projekt Polonius~\cite{Matsakis_2018, Matsakis_et_al_2022} je v programski jezik namreč uvedel neleksikalne življenjske dobe (angl. non-lexical lifetimes), ki preverjanje izposoj in premikov izvaja nad CFG namesto nad AST programa~\cite{Oxide, StackedBorrows}. Prevajalnik zna s pomočjo neleksikalnih življenskih dob dokazati, da sta dve zaporedni mutable izposoji varni, če ena izmed njih ni nikjer uporabljena. Na tak način Rust zagotovi bolj drobnozrnat (angl. fine grained) pogled na program, saj prevajalnik vrača napake ob manj veljavnih programih.
+
+Kljub temu, da Rust v svoji dokumentaciji~\cite{} zagotavlja, da je njegov model upravljanja s pomnilnika varen, pa njegovi razvijalci niso nikoli uradno formalizirali niti njegove operacijske semantike, niti sistema tipov, niti modela za prekrivanje (angl. aliasing model). V literaturi se je tako neodvisno uveljavilo več modelov, ki skušajo čimbolj natančno formalizirati semantiko premikov in izposoj. Model Patina~\cite{reed2015patina} formalizira delovanje analize izposoj v Rustu in dokaže, da velja izrek o varnosti (angl. soundness) za safe podmnožico jezika Rust. Model RustBelt~\cite{10.1145/3158154} poda prvi formalen in strojno preverjen dokaz o varnosti za jezik, ki predstavlja realistično podmnožico jezika Rust. Model Stacked borrows~\cite{StackedBorrows} definira operacijsko semantiko za dostopanje do pomnilnika v Rustu in model za prekrivanje (angl. aliasing model) in ga strojno dokaže. Model Oxide~\cite{Oxide} je formalizacija Rustovega sistema tipov in je tudi prva semantika, ki podpira tudi neleksikalne življenjske dobe. 
