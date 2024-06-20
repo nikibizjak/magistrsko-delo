@@ -16,6 +16,7 @@ executable crochet
         Stg.Pretty
         Stg.Ownership
         Stg.FreeVariables
+        Stg.BoundVariables
         Stg.NameResolution
         Stg.MoveCheck
         Stg.BorrowCheck.Internal

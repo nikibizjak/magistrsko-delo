@@ -4,7 +4,11 @@ import Stg.Interpreter.Types
 import Stg.Stg
 import Stg.Interpreter.Utils
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Debug.Trace
+import Stg.FreeVariables
+import Stg.BoundVariables
+import Stg.Pretty
 
 throw :: String -> InterpreterResult
 throw text = Failure $ InterpreterException text
@@ -42,7 +46,7 @@ allocate heap heapPointer@(HeapAddress heapPointerAddress) heapObject =
     in
         (heap', heapPointer')
 
-allocateMany :: Foldable t => Heap -> HeapAddress -> Map.Map String HeapAddress -> t Binding -> (Heap, HeapAddress, Map.Map String HeapAddress)
+allocateMany :: Heap -> HeapAddress -> Map.Map String HeapAddress -> Program -> (Heap, HeapAddress, Map.Map String HeapAddress)
 allocateMany initialHeap initialHeapPointer initialEnvironment =
     foldr (\(Binding name object) (heap, heapPointer, environment) ->
         let
@@ -52,10 +56,40 @@ allocateMany initialHeap initialHeapPointer initialEnvironment =
             (heap', heapPointer', environment')
     ) (initialHeap, initialHeapPointer, initialEnvironment)
 
+initializeTopLevelObjects :: Program -> (Heap, HeapAddress, Map.Map String HeapAddress)
+initializeTopLevelObjects bindings =
+    let
+        topLevelNames = map (\(Binding name object) -> name) bindings
+        topLevelEnvironment = Map.fromList [(name, HeapAddress 0) | name <- topLevelNames]
+
+        (finalHeap, finalHeapPointer, finalEnvironment) = foldr (\(Binding name object) (heap, heapPointer, environment) ->
+                let
+                    environment' = Map.insert name heapPointer environment
+                    heapObject = HeapObject object Map.empty
+                    (heap', heapPointer') = allocate heap heapPointer heapObject
+                in
+                    (heap', heapPointer', environment')
+            ) (Map.empty, HeapAddress 0, topLevelEnvironment) bindings
+        
+        finalHeap' = Map.map (\(HeapObject object _) ->
+            let
+                requiredVariables = freeVariables object
+                freeVariablesEnvironment = Map.restrictKeys finalEnvironment requiredVariables
+
+                definedVariables = Set.toList (boundVariables object)
+                localVariablesEnvironment = Map.fromList [(key, HeapAddress 0) | key <- definedVariables]
+
+                closureEnvironment = Map.union freeVariablesEnvironment localVariablesEnvironment
+            in
+                HeapObject object closureEnvironment
+            ) finalHeap
+    in
+        (finalHeap', finalHeapPointer, finalEnvironment)
+
 -- Rule LET
 evaluateExpression :: MachineState -> InterpreterResult
 evaluateExpression MachineState {
-    machineExpression = (LetIn name value body),
+    machineExpression = e@(LetIn name value body),
     machineStack = stack,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
@@ -63,9 +97,19 @@ evaluateExpression MachineState {
     machineStep = i
 } =
     let
+        -- Which variables are actually needed inside of the value?
+        -- We should **only add those to the environment** to reduce memory consumption.
+        requiredVariables = freeVariables value
+        freeVariablesEnvironment = Map.restrictKeys environment requiredVariables
+
+        definedVariables = Set.toList (boundVariables value)
+        localVariablesEnvironment = Map.fromList [(key, HeapAddress 0) | key <- definedVariables]
+
+        closureEnvironment = Map.union freeVariablesEnvironment localVariablesEnvironment
+
         -- Allocate a new heap closure
         environment' = Map.insert name heapPointer environment
-        heapObject = HeapObject value environment'
+        heapObject = HeapObject value closureEnvironment
 
         (heap', heapPointer') = allocate heap heapPointer heapObject
     in
@@ -84,18 +128,18 @@ evaluateExpression MachineState {
         Nothing -> throw "The address doesn't point to CON object."
         Just (HeapObject (Constructor name arguments) closureEnvironment) ->
             case getAlgebraicAlternative name alternatives of
-                
+
                 -- Rule CASECON
                 Just (AlgebraicAlternative constructor parameters body) ->
                     -- There is an alternative with constructor [name].
                     let
                         environment' = Map.union environment closureEnvironment
-                        
+
                         newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
                         environment'' = Map.union environment' newVariables
                     in
                         step body stack heap heapPointer environment'' (i + 1)
-                
+
                 -- Rule CASEANY
                 _ ->
                     case getDefaultAlternative alternatives of
@@ -191,7 +235,7 @@ evaluateExpression MachineState {
             stack' = UpdateContinuation (HeapAddress address) : stack
             heap' = Map.insert (HeapAddress address) (HeapObject BlackHole Map.empty) heap
         in
-            step expression stack' heap' heapPointer environment (i + 1)
+            step expression stack' heap' heapPointer closureEnvironment (i + 1)
 
 -- Custom rule INDIRECTION
 evaluateExpression MachineState {
@@ -266,7 +310,7 @@ evaluateExpression MachineState {
 --         in
 --             let
 --                 environment' = Map.union environment closureEnvironment
-                
+
 --                 newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
 --                 environment'' = Map.union environment' newVariables
 --             in

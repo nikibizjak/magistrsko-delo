@@ -31,7 +31,7 @@ initializeState :: Program -> Either InterpreterException MachineState
 initializeState program =
     let
         (initialHeap, initialHeapPointer, initialEnvironment) =
-            allocateMany Map.empty (HeapAddress 0) Map.empty program
+            initializeTopLevelObjects program
     in
         case Map.lookup "main" initialEnvironment of
             Nothing -> Left $ InterpreterException "Undefined function 'main'."
