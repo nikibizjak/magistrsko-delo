@@ -89,15 +89,21 @@ algebraicAlternative =
 
 alternative :: Parser Alternative
 alternative =
-    exactly '|' >> spaces >>
     oneOf [ defaultAlternative, algebraicAlternative ]
+
+alternatives :: Parser [Alternative]
+alternatives =
+  spaces >> alternative >>= \first ->
+  many (spaces >> exactly ';' >> spaces >> alternative) >>= \others ->
+  return (first : others)
 
 caseOf :: Parser Expression
 caseOf =
   word "case" >> spaces1 >> expression >>= \scrutinee ->
-    spaces1 >> word "of" >> spaces >>
-    many1 (spaces >> alternative) >>= \alternatives ->
-    return (CaseOf scrutinee alternatives)
+  spaces1 >> word "of" >> spaces >> exactly '{' >> spaces >>
+  alternatives >>= \alts ->
+  spaces >> exactly '}' >> 
+  return (CaseOf scrutinee alts)
 
 -- If only one atom, then this is an atomic expression, otherwise, this is a
 -- function application.
