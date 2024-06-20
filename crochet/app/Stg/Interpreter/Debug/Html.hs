@@ -64,6 +64,7 @@ machineStateToHtml MachineState {
             H.a ! A.href (toValue next) $ "Next"
 
             renderExpression expression
+            H.h2 "Environment"
             renderEnvironment environment
             renderStack stack
             renderHeap heap
