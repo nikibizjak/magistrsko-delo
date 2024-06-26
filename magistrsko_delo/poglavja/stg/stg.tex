@@ -1,12 +1,256 @@
 \chapter{STG}
 \label{ch:stg}
 
-Na tem mestu bomo na kratko opisali delovanje prevajalnika GHC (angl. Glasgow Haskell compiler), ki izvorno kodo napisano v programskem jeziku Haskell prevede v strojno kodo. Pri prevajanju se program transformira v več različnih vmesnih predstavitev (angl. intermediate representation), mi pa se bomo v magistrskem delu osredotočili predvsem na vmesno kodo imenovano STG jezik (angl. Spineless tagless G-Machine language), katerega delovanje bomo podrobneje opisali v razdelku \ref{sec:stg-jezik}.
+% Uvod: Imperativni vs funkcijski programski jeziki
+Glede na paradigmo delimo programske jezike na imperativne in deklarativne. Imperativni jeziki, kot so npr. C, Rust, Python, \dots, iz vhodnih podatkov izračunajo rezultat s pomočjo stavkov, ki spreminjajo notranje stanje programa. Ukazi oziroma stavki podrobno opisujejo kako naj se program izvaja, in jih je zato nekoliko lažje prevesti v strojne ukaze, ki jih zna izvajati procesor. Pri deklarativnem programiranju pa je program podan kot višjenivojski opis želenega rezultata, ki ne opisuje dejanskega poteka programa. Med deklarativne jezike štejemo npr. SQL, katerega program je opis podatkov, ki jih želimo pridobiti in kako jih želimo manipulirati, ne da bi podrobno opisovali kako naj sistem izvede te operacije.
 
-\subsection{Prevajalnik GHC}
+% Funkcijski programski jeziki
+Med deklarativne programske jezike pa spadajo tudi funkcijski. Ti za osnovno operacijo nad podatki smatrajo čisto (angl. pure) funkcijo, tj. funkcijo, ki za izračun svoje vrednosti uporablja le vrednosti svojih argumentov, ne pa tudi drugega globalnega stanja. Prednost čistih funkcij je, da bodo enaki vhodi vedno producirali enake izhode, kar omogoča optimizacijo programa s pomočjo memoizacije. Osnovni primitiv je v takih jezikih funkcija, kar pomeni, da jih je mogoče prirediti v spremenljivke, jih uporabiti kot argumente in rezultate drugi funkcij. Čist funkcijski program lahko tako opišemo kot kompozicijo čistih funkcij, ki vhod preslikajo v izhod.
+
+Poleg čistih funkcij je ena izmed ključnih značilnosti mnogih funkcijskih jezikov tudi leni izračun (angl. lazy evaluation). Leni izračun je strategija računanja vrednosti izrazov, pri kateri se vrednost izraza ne izračuna takoj, ko je definiran, ampak šele, ko je njegova vrednost dejansko potrebna. Ta pristop je tesno povezan z deklarativno naravo funkcijskega programiranja in omogoča pisanje bolj modularne in učinkovite kode.
+
+V poglavju se bomo podrobneje posvetili \textit{lenim} funkcijskim jezikom, podrobneje bomo definirali leni izračun, ter predstavili Haskell, jezik, ki temelji na čistih funkcijah in lenosti. Podrobneje bomo opisali potek prevajanja jezika v vmesni jezik imenovan STG in opisali delovanje abstraktnega STG stroja, ki ga zna izvajati.
+
+\section{Leni izračun}
+\label{sec:leni-izracun}
+
+% Kaj je semantika, primerjava stroge in nestroge semantike
+Semantika programskega jezika opisuje pravila in principe, ki določajo kako se programi izvajajo. Semantiko za izračun izrazov v grobem delimo na strogo (angl. strict) in nestrogo (angl. non-strict). Večina programskih jezikov pri računanju izrazov uprablja strogo semantiko, ki določa, da se izrazi izračunajo \textit{takoj, ko so definirani}. Nasprotno, nestroga semantika določa, da se izrazi izračunajo šele, ko so dejansko potrebni za nadaljnjo obdelavo, oziroma se sploh ne izračunajo, če niso potrebni.
+
+% Prevladovanje stroge semantike
+Večina današnjih programskih jezikov temelji na strogi semantiki. Mednje spadajo tako imperativni jeziki, kot so npr. C, Rust, Python, kot tudi funkcijski programski jeziki kot sta npr. Ocaml in Lisp. Jezikov, ki temeljijo na nestrogi semantiki je bistveno manj, med njimi npr. jeziki Haskell, Miranda in Clean.
+
+% Primer
+\begin{code-box}{haskell}{Haskell}
+konjunkcija :: Bool -> Bool -> Bool
+konjunkcija p q =
+	case p of
+		False -> False
+		True -> q
+\end{code-box}
+
+Kot primer si oglejmo razliko pri evalvaciji izraza izraza \texttt{konjunkcija False ((1 / 0) == 0)}. Jeziki, ki temeljijo na strogi semantiki ob klicu funkcije najprej izračunajo vrednosti argumentov. Ker pride pri izračunu drugega argumenta do napake, se izvajanje programa tukaj ustavi. Pri jezikih z nestrogo semantiko pa se ob klicu funkcije ne izračunajo vrednosti argumentov, temveč se računanje izvede šele takrat, ko je vrednost dejansko potrebovana. Ker je prvi argument pri klicu funkcije \texttt{False}, funkcija drugega argumenta ne evalvira in tako je rezultat klica vrednost \texttt{False}.
+
+% Formalizacija stroge in nestroge semantike
+Če semantika jezika dopušča izračun vrednosti izraza, kljub temu, da njegovi podizrazi nimajo vrednosti, jo imenujemo za strogo semantiko. Bolj formalno lahko uvedemo vrednost $\bot$, ki jo imenujemo tudi dno (angl. bottom) in predstavlja vrednosti izrazov, katerim ni mogoče izračunati normalne oblike. Če izraza \textit{expr} ne moremo evalvirati, lahko tako zapišemo kar $\textbf{eval}(expr) = \bot$. Za funkcijo enega argumenta pravimo, da je \textit{stroga}, če velja naslednji pogoj.
+
+$$ f \: \bot = \bot $$
+
+Za stroge funkcije torej velja, da če se argument ne bo izračunal, se tudi rezultat klica funkcije z argumentom ne  bo evalviral. Če funkcija ni stroga, pravimo da je nestroga.
+
+% Strogi izračun
+Strogi izračun (angl. eager evaluation) je način implementacija stroge semantike, pri katerem so vrednosti argumentov izračunane pred klicem funkcije. Strogemu izračunu zato pravimo tudi [TODO] (angl. call by value). Obratno, je leni izračun (angl. lazy evaluation) način implementacije nestroge semantike. Pri lenem izračunu izrazi niso evalvirani kadar jih \textit{priredimo} spremenljivki, temveč je njihov izračun odložen na poznejši čas, kadar je vrednost izraza dejansko potrebovana. Ker se izračun izvaja po potrebi po vrednosti, to strategijo imenujemo izračun po potrebi (angl. call by need).
+
+% Prednosti in slabosti
+Ena izmed slabosti strogega izračuna je v tem, da klicana funkcija morebiti argumenta sploh ne potrebuje, kar pomeni, da se je ob klicu funkcije vrednost argumenta izračunala brez potrebe. Prednost strogega izračuna pa je v tem, da je izvajanje bolj predvidljivo, saj za razliko od lenega izračuna natančno vemo kdaj se bodo argumenti evalvirali. Prednost lenega izračuna pa leži v tem, da so argumenti evalvirani \textit{največ enkrat}. Če namreč argument v telesu funkcije ni nikoli uporabljen, potem tudi ne bo nikoli izračunan. Če pa je uporabljen, bo njegova vrednost izračunana \textit{enkrat} in memozirana v vseh preostalih uporabah. Slabost lenega izračuna pa je v tem, da ga je težje implementirati in da se navadno izvaja počasneje od jezikov s strogim izračunom.
+
+% TODO: Reduction order - normal vs leftmost outmost
+
+\subsubsection{Redukcija grafa}
+
+% Razlika med imperativnimi in funkcijskimi jeziki - izvajanje
+Zgodnejši programski jeziki so bili namenjeni neposrednemu upravljanju ra\-ču\-nal\-ni\-ka in so kot taki precej odražali delovanje računalniške arhitekture na kateri so se izvajali~\cite{10.1145/72551.72554}. Funkcijski programski jeziki omogočajo večji nivo abstrakcije, so bolj podobni matematični notaciji in posledično tudi bolj primerni za dokazovanje pravilnosti programov. Višji nivo abstrakcije pa pomeni, da jih je težje prevajati oziroma izvajati na današnji računalniški arhitekturi. Ena izmed ovir pri implementaciji lenega izračuna je učinkovito upravljanje z odloženimi izrazi (angl. thunks) in zagotavljanje, da se ti izrazi izračunajo le, ko so resnično potrebni.
+
+% Kako implementiramo leni izračun?
+Leni izračun najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{peyton1987implementation, 10.1145/72551.72554}. Pri tej metodi prevajalnik na pomnilniku najprej sestavi abstraktno sintaksno drevo programa, kjer vozlišča predstavljajo aplikacije funkcij oziroma operacije nad podatki, njihova podvozlišča pa odvisnosti med njimi. V procesu \textit{redukcije}, se sintaksno drevo obdeluje z lokalnimi transformacijami, ki ga predelujejo, dokler ni dosežena končna oblika, tj. dokler ni izračunan rezultat programa. Pri tem se sintaksno drevo zaradi deljenja izrazov (angl. expression sharing) navadno spremeni v usmerjen graf.
+
+Slika \ref{fig:redukcija-aplikacije-pred} prikazuje abstraktno sintaktično drevo izraza $(\lambda x \, . \, \textsc{not} \; x) \; \text{True}$. Aplikacija funkcij je predstavljena z vozliščem @, ki vsebuje dva podizraza: funkcijo, ki se bo izvedla in njen argument. V tem primeru je funkcija anonimni lambda izraz $(\lambda x \, . \, \textsc{not} \; x)$, ki sprejme en argument. Pri redukciji, se vse uporabe parametra $x$ zamenjajo z vrednostjo argumenta \texttt{True}. Slika \ref{fig:redukcija-aplikacije-po} prikazuje drevo po redukciji. Ker se je v funkciji argument $x$ pojavil le enkrat, je rezultat redukcije še vedno drevo.
+
+\begin{figure*}[ht]
+	\centering
+	\begin{subfigure}[b]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}[
+			scale=0.75, transform shape,
+			main/.style = {draw, circle},
+			edge from parent/.style={draw,-latex},
+			level distance=1.6cm,align=center,text width=0.75cm,
+			]
+			\node[main] (root) {@}
+			child { node[main] {$\lambda x$}
+				child { node[main] {@}
+					child { node[main] {\textsc{not}} }
+					child { node[main] {$x$} }
+				}
+			}
+			child { node[main] {True} };
+		\end{tikzpicture}
+		\subcaption{Abstraktno sintaksno drevo \textit{pred} redukcijo}
+		\label{fig:redukcija-aplikacije-pred}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}[
+			scale=0.75, transform shape,
+			main/.style = {draw, circle},
+			edge from parent/.style={draw,-latex},
+			level distance=1.6cm,align=center,text width=0.75cm,
+			]
+			\node[main] (root) {@}
+			child { node[main] {\textsc{not}} }
+			child { node[main] {True} };
+		\end{tikzpicture}
+		\subcaption{Abstraktno sintaksno drevo \textit{po} redukciji}
+		\label{fig:redukcija-aplikacije-po}
+	\end{subfigure}
+	\caption{Redukcija grafa izraza $(\lambda x \, . \, \textsc{not} \; x) \; \texttt{True}$}
+	\label{fig:redukcija-aplikacije}
+\end{figure*}
+
+Slika \ref{fig:redukcija-dvojne-aplikacije} prikazuje en korak redukcije abstraktnega sintaksnega drevesa izraza $(\lambda x \, . \, \textsc{and} \; x \; x) \; (\textsc{not} \; \texttt{True})$. Po enem koraku redukcije sintaksnega telesa, se \textit{vse uporabe} parametra $x$ zamenjajo z njegovo vrednostjo. Ker je takih pojavitev več, pa rezultat ni več drevo, temveč acikličen usmerjen graf. Na pomnilniku tak izraz predstavimo z dvema kazalcema na isti objekt. Ko se objekt prvič izračuna, se vrednost objekta na pomnilniku posodobi z izračunano vrednostjo. Ob vseh nadaljnjih uporabah argumenta, tako ne bo potrebno še enkrat računati njegove vrednosti, s čemer dosežemo, da bo vsak argument izračunan največ enkrat. 
+
+\begin{figure*}[ht]
+	\centering
+	\begin{subfigure}[b]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}[
+			scale=0.75, transform shape,
+			main/.style = {draw, circle},
+			edge from parent/.style={draw,-latex},
+			level distance=1.6cm,align=center,text width=0.75cm,
+			level 1/.style={sibling distance=2.5cm},
+			level 2/.style={sibling distance=1.7cm},
+			]
+			\node[main] (root) {@}
+			child { node[main] {$\lambda x$}
+				child { node[main] {@}
+					child { node[main] {\textsc{and}} }
+					child { node[main] {$x$} }
+					child { node[main] {$x$} }
+				}
+			}
+			child { node[main] {@}
+				child { node[main] {\textsc{not}} }
+				child { node[main] {True} }
+			};
+		\end{tikzpicture}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}[
+			scale=0.75, transform shape,
+			main/.style = {draw, circle},
+			edge from parent/.style={draw,-latex},
+			level distance=2cm,align=center,text width=0.75cm,
+			]
+			\node[main] (root) {@}
+			child { node[main] {\textsc{and}} }
+			child { edge from parent[draw=none] }
+			child { node[main] (argument) {@}
+				child { node[main] {\textsc{not}} }
+				child { node[main] {True} }
+			};
+			\draw[-latex] (root) to[out=-90, in=180, looseness=1.1] (argument);
+		\end{tikzpicture}
+	\end{subfigure}
+	\caption{Redukcija grafa izraza $(\lambda x \, . \, \textsc{and} \; x \; x) \; (\textsc{not} \; \texttt{True})$}
+	\label{fig:redukcija-dvojne-aplikacije}
+\end{figure*}
+
+Slika \ref{fig:funkcija-y} prikazuje dve možni implementaciji ciklične funkcije $Y \; f = f \; (Y \; f)$. Za razliko od primerov na slikah \ref{fig:redukcija-aplikacije} in \ref{fig:redukcija-dvojne-aplikacije}, pri katerih je bilo reducirano sintaktično drevo še vedno usmerjen acikličen graf, pa temu pri funkciji $Y$ ni več tako. Funkcija $Y$ je namreč rekurzivna, kar pomeni, da se sama pojavi kot vrednost svojega argumenta. Na sliki \ref{fig:funkcija-y-kot-prosta-spremenljivka} je funkcija $Y$ implementirana s pomočjo acikličnega grafa, a v svojem telesu vseeno dostopa do proste spremenljivke $Y$, zaradi česar obstaja na pomnilniku cikel. Na sliki \ref{fig:funkcija-y-kot-cikel} je funkcija implementirana neposredno s pomnilniškem ciklu, kjer je vrednost argumenta kar vozlišče samo.
+
+\begin{figure*}[ht]
+	\centering
+	\begin{subfigure}[b]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}[
+			scale=0.75, transform shape,
+			main/.style = {draw, circle},
+			edge from parent/.style={draw,-latex},
+			level distance=1.4cm,align=center,text width=0.75cm,
+			]
+			\node[main] (root) {@}
+			child { node[main] {$f$} }
+			child { node[main] {@}
+				child { node[main] {Y} }
+				child { node[main] {f} }
+			};
+		\end{tikzpicture}
+		\subcaption{Funkcija $Y$ implementirana z uporabo proste spremenljivke}
+		\label{fig:funkcija-y-kot-prosta-spremenljivka}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.45\textwidth}
+		\centering
+		\begin{tikzpicture}[
+			scale=0.75, transform shape,
+			main/.style = {draw, circle},
+			edge from parent/.style={draw,-latex},
+			level distance=1.4cm,align=center,text width=0.75cm,
+			]
+			\node[main] (root) {@}
+			child { node[main] {$f$} }
+			child { node (right) {} edge from parent[draw=none] };
+			\coordinate [above=0.6cm of root] (above-root);
+			\coordinate [right=0.4cm of right] (right-of-right);
+			\coordinate (intermediate) at (right-of-right |- above-root);
+			\draw[-latex] (root) -- (right.center) -- (right-of-right) -- (intermediate) -- (above-root) -- (root.north);
+		\end{tikzpicture}
+		\subcaption{Funkcija $Y$ implementirana kot cikličen usmerjen graf}
+		\label{fig:funkcija-y-kot-cikel}
+	\end{subfigure}
+	\caption{Graf funkcije $Y \; f = f \; (Y \; f)$}
+	\label{fig:funkcija-y}
+\end{figure*}
+
+\subsubsection{Zapis grafa na pomnilniku}
+
+\begin{figure*}[ht]
+	\centering
+	\begin{tikzpicture}[
+		% Popravi vertikalno pozicioniranje teksta
+		% https://tex.stackexchange.com/a/133237/324113
+		verticalalign/.append style={font=\vphantom{Ag}}
+		]
+		\draw[verticalalign] (0,0) rectangle ++(2,1) node[midway] {Oznaka};
+		\draw[verticalalign] (2,0) rectangle ++(1,1) node[midway] {$a_1$};
+		\draw[verticalalign] (3,0) rectangle ++(1,1) node[midway] {$a_2$};
+		\draw[verticalalign] (4,0) rectangle ++(2,1) node[midway] {$\dots$};
+		\draw[verticalalign] (6,0) rectangle ++(1,1) node[midway] {$a_n$};
+	\end{tikzpicture}
+	\caption{Pomnilniška predstavitev vozlišča grafa}
+	\label{fig:shema-vozlisca-pomnilnik}
+\end{figure*}
+
+\begin{figure*}[ht]
+	\centering
+	\begin{tikzpicture}
+		\draw (0,0) rectangle ++(1,1) node[midway] {\textbf{@}};
+		\draw (1,0) rectangle ++(2,1) node[midway] (and) {};
+		\draw (3,0) rectangle ++(2,1) node[midway] (and-arg1) {};
+		\draw (5,0) rectangle ++(2,1) node[midway] (and-arg2) {};
+		
+		\draw (0,-2) rectangle ++(1,1) node[midway] (app-not) {\textbf{@}};
+		\draw (1,-2) rectangle ++(2,1) node[midway] (not) {};
+		\draw (3,-2) rectangle ++(2,1) node[midway] {\texttt{0b1}};
+		
+		\node (above-and) at (2,2) {\textsc{and}};
+		\node (below-not) at (2,-3) {\textsc{not}};
+		
+		\draw[] (and-arg1) -- ++(0,-1);
+		\draw[-latex] (and-arg2) -- ++(0,-1) -- ++(-7,0) -- ++(0,-1) -- ++(1,0);
+		
+		\draw[-latex] (and) -- ++(0,1);
+		\draw[-latex] (not) -- ++(0,-1);
+		% \draw[-latex] (and) -- (above-and);
+	\end{tikzpicture}
+	\caption{Predstavitev izraza $\textsc{and} \; (\textsc{not} \; \texttt{True}) \; (\textsc{not} \; \texttt{True})$ na pomnilniku}
+	% \label{fig:}
+\end{figure*}
+
+Leno evalvacijo najpogosteje implementiramo s pomočjo zakasnitev (angl. thunks). Te so na pomnilniku predstavljene kot kazalec na kodo, ki izračuna njihovo vrednost. Ob evalvaciji zakasnitve se najprej izračuna njihova vrendost, izračunano vrednost pa se shrani v struktro na pomnilniku, da je ob naslednji evalvaciji ni potrebno ponovno računati. Na tak način se z nestrogo semantiko doseže, da se vsak izraz izračuna \textit{največ enkrat}. Če se argument ne pojavi nikjer v telesu funkcije, se zakasnitve nikoli ne računa, če pa se v telesu pojavi večkrat, se vrednost izračuna enkrat, za vsako nadaljno evalvacijo argumenta pa se preprosto vrne vrednost shranjeno na pomnilniku.
+
+% TODO: Omenimo še, da je pri lenem izračunu zelo težko predvideti koliko prostora bo program porabil, kar pa ni velik problem pri imperativnih jezikih.
+% TODO: Problem: Funkcije so first-class-citizens, kar pomeni, da je potrebno nekoliko več razmisliti o predstavitvi funkcij na pomnilniku.
+
+% Povezava z naslednjim poglavjem
+V nadeljevanju se bomo osredotočili na delovanje prevajalnika GHC (angl. Glasgow Haskell compiler), ki izvorno kodo napisano v programskem jeziku Haskell prevede v strojno kodo. Pri prevajanju se program transformira v več različnih vmesnih predstavitev (angl. intermediate representation), mi pa se bomo v magistrskem delu osredotočili predvsem na vmesno kodo imenovano STG jezik (angl. Spineless tagless G-Machine language), katerega delovanje bomo podrobneje opisali v razdelku \ref{sec:stg-jezik}.
+
+
+\section{Prevajalnik GHC}
 \label{sec:prevajalnik-ghc}
-
-% TODO: Dodaj shemo prevajanja Haskell -> strojna koda
 
 Prevajalnik GHC (angl. Glasgow Haskell compiler) prevajanje iz izvorne kode v programskem jeziku Haskell v strojno kodo izvaja v več zaporednih fazah oziroma modulih. Vsaka faza kot vhod prejme izhod prejšnje, nad njim izvede določeno transformacijo in rezultat posreduje naslednji fazi. Faze glede na njihovo funkcijo v grobem delimo na tri dele. V prednjem delu (angl. front-end) se nad izvorno kodo najprej izvede leksikalna analiza, pri kateri se iz toka znakov, ki predstavljajo vhodni program pridobi abstraktno sintaktično drevo (angl. abstract syntax tree). Nad drevesom se izvede še zaporedje semantičnih analiz pri katerih se preveri ali je program pomensko pravilen. Sem sodi razreševanje imen, pri kateri se razreši vsa imena spremenljivk iz uvoženih modulov v programu in preveri ali so vse spremenljivke deklarirane pred njihovo uporabo. Izvede se še preverjanje tipov, kjer se za vsak izraz izpelje njegov najbolj splošen tip in preveri ali se vsi tipi v programu ujemajo.
 
@@ -96,7 +340,7 @@ Prevajalnik GHC (angl. Glasgow Haskell compiler) prevajanje iz izvorne kode v pr
 		\draw[dashed] (sprednji-del-zgoraj) -- (sprednji-del-spodaj) node[pos=0,left=0.2cm,text width=2cm,align=right] {prednji del} node[pos=0,right=0.2cm,text width=2cm] {srednji del};
 		
 		\node[coordinate, right=0.25cm of desno-od-optimizacija] (zadnji-del-center) {};
-		\node[coordinate, above=3.7cm of zadnji-del-center] (zadnji-del-zgoraj) {};
+		\node[coordinate, above=3.7cm of zadnjif-del-center] (zadnji-del-zgoraj) {};
 		\node[coordinate, below=3.2cm of zadnji-del-center] (zadnji-del-spodaj) {};
 		\draw[dashed] (zadnji-del-zgoraj) -- (zadnji-del-spodaj) node[pos=0,right=0.2cm,text width=2cm] {zadnji del};
 		
@@ -105,39 +349,16 @@ Prevajalnik GHC (angl. Glasgow Haskell compiler) prevajanje iz izvorne kode v pr
 	\label{fig:shema-ghc}
 \end{figure}
 
-Ker je Haskell programski jezik, ki je namenjen ljudem, je precej velik jezik, z veliko različnimi sintaktičnimi oblikami in konstruktorji. Tako lahko npr. programer napiše isto kodo na več različnih načinov. S perspektive piscev prevajalnikov pa to pomeni veliko več dela, saj je potrebno zagotoviti, da se vsi konstrukti v strojno kodo prevedejo pravilno. Za odpravljanje te težave se v zadnjem koraku prednjega dela prevajalnika imenovanem razsladenje (angl. desugarification), sintaktično drevo jezika Haskell pretvori v sintaktično drevo jezika Core. Ta je zelo majhen funkcijski programski jezik, ki temelji na lambda računu, kjub svojem majhnem naboru konstruktov pa še vedno omogoča zapis poljubnega Haskell programa. Naslednje faze tako operirajo nad dosti manjšim jezikom, kar precej poenostavi prevajanje.
+Bogata sintaksa programskega jezika Haskell predstavlja velik izziv za izdelavo prevajalnikov, saj zahteva natančno prevajanje raznolikih sintaktičnih struktur in konstruktov v strojno kodo. Težavo rešuje zadnji korak prednjega dela prevajalnika, imenovan razsladenje (angl. desugarification). V njem se sintaktično drevo jezika Haskell pretvori v drevo jezika Core, ki je minimalističen funkcijski jezik, osnovan na lambda računu. Kljub omejenemu naboru konstruktov omogoča Core zapis katerega koli Haskell programa. Vse nadaljnje faze prevajanja se tako izvajajo na tem precej manjšem jeziku, kar močno poenostavi celoten proces.
 
 Srednji del (angl. middle-end) prevajalnika sestavlja zaporedje optimizacij, ki kot vhod sprejmejo program v Core jeziku in vrnejo izboljšan program v Core jeziku. Rezultat niza optimizacij se posreduje zadnjemu delu (angl. back-end) prevajalnika, ki poskrbi za prevajanje Core jezika v strojno kodo, ki se lahko neposredno izvaja na procesorju. Na tem mestu se Core jezik prevede v STG jezik, ta pa se nato prevede v programski jezik \texttt{C--}. Slednji je podmnožica programskega jezika C in ga je mogoče v strojno kodo prevesti na tri načine: neposredno ali z enim izmed prevajalnikov LLVM ali GCC. Prednost take vrste prevajanja je v večji prenosljivosti programov, saj znata LLVM in GCC generirati kodo za večino obstoječih procesorskih arhitektur, poleg tega pa imata vgrajene še optimizacije, ki pohitrijo delovanje izhodnega programa.
 
-\subsection{STG jezik}
+\section{STG jezik}
 \label{sec:stg-jezik}
 
-Lene funkcijske programske jezike najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{peyton1987implementation}. Eden izmed načinov za izvajanje redukcije je abstraktni STG stroj (angl. Spineless Tagless G-machine)~\cite{jones1992implementing}, ki definira in zna izvajati majhen funkcijski programski jezik STG. STG stroj in jezik se uporabljata kot vmesni korak pri prevajanju najpopularnejšega lenega jezika Haskell v prevajalniku GHC (Glasgow Haskell Compiler)~\cite{GHC}.
+Kot smo si podrobneje pogledali v poglavju \ref{sec:leni-izracun}, lene funkcijske programske jezike najpogosteje implementiramo s pomočjo redukcje grafa. Eden izmed načinov za izvajanje redukcije je abstraktni STG stroj (angl. Spineless Tagless G-machine)~\cite{jones1992implementing, marlow2004making}, ki definira in zna izvajati majhen funkcijski programski jezik STG. STG stroj in jezik se uporabljata kot vmesni korak pri prevajanju najpopularnejšega lenega jezika Haskell v prevajalniku GHC (Glasgow Haskell Compiler)~\cite{GHC}.
 
 % Kaj sploh je STG stroj in kaj je STG jezik
-
-\subsubsection{Lena evalvacija}
-
-Ena izmed najpomembnejših lastnosti lenih funkcijskih programskih jezikov je njihova nestroga semantika (angl. non-strict semantic). Ta narekuje kako se evalvirajo oziroma računajo argumenti pri klicu funkcije. Pri jezikih z nestrogo semantiko se računanje vrednosti argumentov funkcije ne izvede ob klicu, temveč šele takrat ko se izvaja telo funkcije. Ker se vrednosti argumentov ne izračunajo nemudoma, temveč se računanje zamakne v času dokler funkcija vrednosti arugmenta dejansko ne potrebuje, je taka semantika imenovana tudi za leno.
-
-% TODO: Preveri kako deluje nestroga semantika v knjigi
-$$ f \bot = \bot $$
-
-Leno evalvacijo najpogosteje implementiramo s pomočjo zakasnitev (angl. thunks). Te so na pomnilniku predstavljene kot kazalec na kodo, ki izračuna njihovo vrednost. Ob evalvaciji zakasnitve se najprej izračuna njihova vrendost, izračunano vrednost pa se shrani v struktro na pomnilniku, da je ob naslednji evalvaciji ni potrebno ponovno računati. Na tak način se z nestrogo semantiko doseže, da se vsak izraz izračuna \textit{največ enkrat}. Če se argument ne pojavi nikjer v telesu funkcije, se zakasnitve nikoli ne računa, če pa se v telesu pojavi večkrat, se vrednost izračuna enkrat, za vsako nadaljno evalvacijo argumenta pa se preprosto vrne vrednost shranjeno na pomnilniku.
-
-% TODO: Kaj je razlika med eval/apply in push/enter modelom
-% Kaj se spremeni, če dodamo enega in drugega
-% Katero različico trenutno uporablja Haskell
-
-Nestrogo semantiko je moč implementirati na dva različna načina:
-
-\begin{itemize}
-	\itemsep 0em
-	\item model potisni in vstopi (angl. push / enter model)
-	\item model izračunaj in apliciraj (angl. eval / apply model)
-\end{itemize}
-
-Abstraktni STG stroj je zgodovinsko najprej uporabljal model potisni / vstopi~\cite{jones1992implementing}. Trenutna različica STG stroja pa uporablja model evalviraj / apliciraj~\cite{marlow2004making}, saj se je empirično izkazal za bolj učinkovito implementacijo nestroge semantike.
 
 \subsubsection{Definicija jezika}
 
@@ -204,3 +425,18 @@ Objekt \textsc{PAP} predstavlja delno aplikacijo (angl. partial application) fun
 Objekt \textsc{CON} predstavlja saturirano aplikacijo konstruktorja $C$ na argumente $a1, \dots a_n$. Pri tem je število argumentov, ki jih prejme konstruktor natančno enako številu parametrov, ki jih zahteva.
 
 Objekt \textsc{THUNK} predstavlja zakasnitev izraza $e$. Kadar se vrednost izraza uporabi, tj. kadar se izvede \texttt{case} izraz, se izračuna vrednost $e$, \textsc{THUNK} objekt na kopici pa se nato posodobi s preusmeritvijo (angl. indirection) na vrednost $e$. Pri evalvaciji zakasnitve se objekt \textsc{THUNK} na kopici zamenja z objektom \textsc{BLACKHOLE}, s čemer se preprečuje puščanje pomnilnika~\cite{jones1992tail} in neskončnih rekurzivnih struktur. Objekt \textsc{BLACKHOLE} se lahko pojavi le kot rezultat evalvacije zakasnitve, nikoli pa v vezavi v \texttt{let} izrazu.
+
+\subsubsection{Abstraktni STG stroj}
+
+
+% TODO: Kaj je razlika med eval/apply in push/enter modelom
+% Kaj se spremeni, če dodamo enega in drugega
+% Katero različico trenutno uporablja Haskell
+
+%Nestrogo semantiko je moč implementirati na dva različna načina:
+%
+%\begin{itemize}
+%	\itemsep 0em
+%	\item model potisni in vstopi (angl. push / enter model)
+%	\item model izračunaj in apliciraj (angl. eval / apply model)
+%\end{itemize}

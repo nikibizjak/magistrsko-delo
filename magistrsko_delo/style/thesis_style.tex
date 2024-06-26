@@ -60,10 +60,14 @@
 \usepackage{colortbl}
 \usepackage{url}
 \usepackage{tikz}
+\usetikzlibrary{arrows}
+\usetikzlibrary{tikzmark}
 \usetikzlibrary{positioning,arrows.meta}
 % Za shranjevanje tikz slik v zunanje datoteke.
 % \usetikzlibrary{external}
 % \tikzexternalize % activate!
+
+\usepackage{subcaption}
 
 % Minted package for code highlighting. To enable bold characters in code, the lmodern font family must also be included.
 \usepackage{minted}
@@ -87,6 +91,7 @@
 		linenos,
 		breaklines,
 		fontsize=\footnotesize,
+		tabsize=4,
 	},
 	minted language=#2,
 	listing only,
@@ -106,6 +111,7 @@
 		linenos,
 		breaklines,
 		fontsize=\footnotesize,
+		tabsize=4,
 	},
 	minted language=rust,
 	listing only,
@@ -125,6 +131,7 @@
 		linenos,
 		breaklines,
 		fontsize=\footnotesize,
+		tabsize=4,
 	},
 	minted language=rust,
 	listing only,
@@ -135,6 +142,26 @@
 	sharp corners,
 	left=2em,
 	overlay={\node[anchor=south east, font=\small, outer sep=0pt,xshift=-3em,yshift=-0.5em,fill=white,inner xsep=0.75em] at (frame.south east) {Rust \xmark};},
+	#1
+}
+
+\newtcblisting{code-box}[3][]{%
+	listing engine=minted,
+	minted options={
+		linenos,
+		breaklines,
+		fontsize=\footnotesize,
+		tabsize=4,
+	},
+	minted language=#2,
+	listing only,
+	colback=white,
+	colframe=lightgray,
+	enhanced,
+	boxrule=0.5pt,
+	sharp corners,
+	left=2em,
+	overlay={\node[anchor=south east, font=\small, outer sep=0pt,xshift=-3em,yshift=-0.5em,fill=white,inner xsep=0.75em] at (frame.south east) {#3};},
 	#1
 }
 
