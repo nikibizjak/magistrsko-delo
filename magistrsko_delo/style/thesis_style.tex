@@ -39,6 +39,10 @@
 % SLO: dodatni paketi
 % ENG: additional packages
 %----------------------------------------------------------------
+
+% Pretvori celoten dokument v črno-belo
+%\usepackage[gray]{xcolor}
+
 % SLO: omogoča večjo manipulacijo nad tabelami
 % ENG: allows for greater manipulation of tables
 \usepackage{booktabs}
@@ -63,6 +67,7 @@
 \usetikzlibrary{arrows}
 \usetikzlibrary{tikzmark}
 \usetikzlibrary{positioning,arrows.meta}
+\usetikzlibrary{decorations.pathreplacing}
 % Za shranjevanje tikz slik v zunanje datoteke.
 % \usetikzlibrary{external}
 % \tikzexternalize % activate!
@@ -221,5 +226,25 @@
 \newcommand{\trackname}{!undefined!}
 
 \newcommand{\BibTeX}{{\sc Bib}\TeX}
+
+\newcommand{\komentar}[1]{\textcolor{red}{#1}}
+
+\newcommand{\infer}[4][]{
+	\frac{#2}{#3 \enspace \Rightarrow \enspace #4}
+	\if\relax\detokenize{#1}\relax
+	\notag
+	\else
+	\tag{\textsc{#1}}
+	\fi
+}
+
+\newcommand{\linfer}[4][]{
+	\frac{#2}{\splitdfrac{#3}{\Rightarrow \enspace #4\hfill}}
+	\if\relax\detokenize{#1}\relax
+	\notag
+	\else
+	\tag{\textsc{#1}}
+	\fi
+}
 
 
