@@ -19,7 +19,7 @@
 % Definiraj strukturo dokumenta
 %================================================================
 \documentclass[a4paper, 12pt]{book}
-
+%TC:ignore
 
 %================================================================
 % Izbira slovenskega jezika
@@ -57,27 +57,34 @@
 
 % include formatted front pages
 \input{style/thesis_front_pages}
+%TC:endignore
 
 %----------------------------------------------------------------
 % Poglavje 1: Uvod
 %----------------------------------------------------------------
-\include{poglavja/uvod/uvod.tex}
+\include{poglavja/01_uvod/uvod}
 
 %----------------------------------------------------------------
 % Poglavje 2: STG
 %----------------------------------------------------------------
-\include{poglavja/stg/stg.tex}
+\include{poglavja/02_stg/stg}
 
 %----------------------------------------------------------------
 % Poglavje 3: Sorodno delo
 %----------------------------------------------------------------
-\include{poglavja/sorodno_delo/sorodno_delo.tex}
+\include{poglavja/03_sorodno_delo/sorodno_delo}
 
 %----------------------------------------------------------------
-% Poglavje 4: Zaključek
+% Poglavje 4: Težave pri izračunu življenjskih dob pri lenem izračunu
 %----------------------------------------------------------------
-% \include{poglavja/zakljucek/zakljucek.tex}
+\include{poglavja/04_problemi/problemi}
 
+%----------------------------------------------------------------
+% Poglavje 5: Zaključek
+%----------------------------------------------------------------
+\include{poglavja/05_zakljucek/zakljucek}
+
+%TC:ignore
 %----------------------------------------------------------------
 % Bibliografija
 %----------------------------------------------------------------
@@ -85,3 +92,4 @@
 \bibliography{bibliography}
 
 \end{document}
+%TC:endignore
