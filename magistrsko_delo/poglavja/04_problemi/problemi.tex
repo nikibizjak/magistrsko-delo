@@ -1,5 +1,7 @@
 \chapter[Življenjske dobe in leni izračun]{Težave pri izračunu življenjskih dob pri lenem izračunu}
 
+\section{Izpeljava življenjskih dob}
+
 Programski jezik Rust je neučakan, kar pomeni, da je vrstni red operacij v programu natanko določen. Če se stavek $s_1$ v programu pojavi pred stavkom $s_2$, potem se bo stavek $s_1$ zagotovo izvedel pred $s_2$.
 
 V spodnjem primeru se bodo stavki zagotovo izvajali glede na vrstni red, v katerem so zapisani. Tako se bo klic funkcije \texttt{mul} zagotovo izvedel pred klicem \texttt{div}, ta pa se bo zagotovo izvedla pred klicem \texttt{add}.
@@ -14,11 +16,18 @@ fn izracunaj() -> i32 {
 \end{rust-success}
 
 % Opis kako bi se to izvedlo v lenem izračunu
-V jezikih z lenim izračunom pa temu ni tako. Pri prirejanju v spremenljivko $a$, bi se na kopici najprej ustvarila nova zakasnitev za poznejši izračun vrednosti izraza \texttt{mul(6, 2)}. V spremenljivki $a$ bi se hranil kazalec na naslov na katerem se nahaja zakasnitev. Na podoben način bi se izvedlo še prirejanje v $b$, pri prirejanju v spremenljivko $r$ pa bi se v ovojnico zakasnitve shranila še kazalca na zakasnitvi $a$ in $b$ a kopici. Ker je izračun len, se pri klicu funkcije \texttt{izracunaj} na kopici samo ustvarijo novi objekti, ne izračuna pa se njihova dejanska vrednost. Rezultat klica \texttt{izracunaj} je tako naslov ovojnice zakasnitve $r$ na kopici. 
+V jezikih z lenim izračunom pa temu ni tako. Pri prirejanju v spremenljivko $a$, bi se na kopici najprej ustvarila nova zakasnitev za poznejši izračun vrednosti izraza \texttt{mul(6, 2)}. V spremenljivki $a$ bi se hranil kazalec na naslov na katerem se nahaja zakasnitev. Na podoben način bi se izvedlo še prirejanje v $b$, pri prirejanju v spremenljivko $r$ pa bi se v ovojnico zakasnitve shranila še kazalca na zakasnitvi $a$ in $b$ na kopici. Ker je izračun len, se pri klicu funkcije \texttt{izracunaj} na kopici samo ustvarijo novi objekti, ne izračuna pa se njihova dejanska vrednost. Rezultat klica \texttt{izracunaj} je tako naslov ovojnice zakasnitve $r$ na kopici. 
 
 % Življenjske dobe.
+V poglavju bomo predpostavljali, da pri prevajanju niso uporabljene nobene optimizacije, in da se dosegi spremenljivk računajo glede na leksikalen doseg. V poglavju \ref{sec:rustov-model-lastnistva} smo že omenili, da se v Rustu dosegi oziroma življenjske dobe računajo neleksikalno. Pri računanju življenjskih dob, se namreč upošteva analiza živosti spremenljivk (angl. liveness analysis), kar pomeni, da imajo lahko spremenljivke krajšo življenjsko dobo kot funkcija, ki jih je ustvarila. V tem poglavju predpostavimo, da je spremenljivka živa od njene uvedbe, do konca funkcije v kateri je bila definirana, oziroma do prvega (edinega) premika spremenljivke.
+
 % Če predpostavimo, da se v Rustu življenjske dobe računajo leksikalno.
 Ker je vrstni red operacij natanko določen, je zelo preprosto izračunati tudi življenjske dobe. V zgornjem primeru ima spremenljivka $a$ zagotovo daljšo življenjsko spremenljivko $b$, saj je bila deklarirana pred uvedbo spremenljivke $b$. Ker bi se spremenljivka $b$ lahko sklicevala na spremenljivko $a$, je potrebno zagotoviti, da spremenljivka $a$ živi vsaj toliko časa kot $b$, kar pomeni da je življenjska doba spremenljivke $a$ večja od $b$.
 
 % TODO: Napiši bolje
 Zaradi lenosti jezika je izračun življenjskih dob praktično nemogoč, kar pomeni, da Rustov princip čiščenja pomnilnika ne pride v poštev. Ker ne moremo izračunati življenjskih dob, v STG ne moremo implementirati izposoje. Kar se tiče pa samega lastništva iz Rusta, je pa to zelo podobno linearnim oziroma edinstvenim tipom (angl. uniqueness types). Ti so bili v Haskell že implementirani (glej "Linear Haskell: practical linearity in a higher-order polymorphic language"~\cite{bernardy2018linear}). Če v jezik uvedemo le linearne tipe, jezik zelo omejimo in postane dokaj neuporaben. Zato navadno dodamo še nelinearne tipe, zaradi katerih pa: 1. jezik ni več povsem len (glej poglavje 3.1.1) 2. v jeziku še vedno potrebujemo avtomatičen čistilec pomnilnika (linearne tipe lahko počistimo brez, nelinearnih pa na žalost ne)
+
+\section{Primer}
+
+Za vsakršno vrsto analize je potrebno v jezik STG ponovno potrebno uvesti oznake tipov.
+% Zakaj

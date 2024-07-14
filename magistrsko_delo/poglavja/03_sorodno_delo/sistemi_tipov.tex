@@ -23,7 +23,7 @@ Programski jeziki imajo običajno neomejen (angl. unrestricted) sistem tipov, ki
 
 Substrukturni sistemi tipov (angl. substructural type systems) ~\cite{pierce2004advanced} so sistemi tipov, pri katerih ne velja ena izmed treh strukturni lastnosti. Mednje sodi npr. \textit{urejen} (angl. ordered) sistem tipov, pri katerem ne velja nobena izmed treh lastnosti, kar v praksi pomeni, da morajo biti vse spremenljivke uporabljene natanko enkrat in to v vrstnem redu kot so bile deklarirane. V nadaljevanju si bomo podrobneje ogledali linearen sistem tipov, ki dovoljuje zamenjavo, ne pa tudi oslabitve in zoženja.
 
-\subsection{Linearni tipi}
+\section{Linearni tipi}
 \label{sec:linearni-tipi}
 
 % [x] Citiramo: Linear logic
@@ -80,31 +80,79 @@ Wadler v svojem delu torej uvede dva povsem ločena ``svetova`` tipov, med kater
 
 Linearni tipi so bili tudi že dodani v Haskell kot razširitev sistema tipov~\cite{bernardy2018linear}. Najpomembnejša pridobitev članka je vpeljava linearnih tipov v Haskell, ki omogoča varno in učinkovito posodabljanje podatkovnih struktur ter zagotavljanje pravilnega dostopa do zunanjih virov, kot so datoteke in omrežni viri. Avtorji so dokazali, da je mogoče linearne tipe vključiti v obstoječi programski jezik s spreminjanjem algoritma za preverjanje in izpeljavo tipov, ne pa tudi s samim spreminjanjem abstraktnega STG stroja na katerem se izvaja redukcija grafa.
 
-\subsection{Unikatni tipi}
+\section{Unikatni tipi}
 \label{sec:unikatni-tipi}
 
 % [x] Citiramo: Linearity and Uniqueness: An Entente Cordiale
 % [ ] Citiramo: Functional Ownership through Fractional Uniqueness
 % [ ] Citiramo: Quantitative Program Reasoning with Graded Modal Types
 
-\komentar{Unikatni tipi} (angl. uniqueness types) so namenjeni zagotavljanju, da na vsako vrednost kaže natanko ena referenca, kar omogoča učinkovito implementacijo sistema, ki omogoča posodobitve na mestu (angl. in-place updates)~\cite{marshall2022linearity}.  V literaturi se unikatni tipi pogosto kar enačijo z linearnimi tipi oziroma se obravnavajo kot posebna vrsta linearnih tipov~\cite{pierce2004advanced, wadler1990linear, wadler1991there}.
+% Definicija unikatnih tipov
+\komentar{Unikatni tipi} (angl. uniqueness types) so namenjeni zagotavljanju, da na vsako vrednost kaže natanko ena referenca, kar omogoča učinkovito implementacijo sistema, ki omogoča posodobitve na mestu (angl. in-place updates)~\cite{marshall2022linearity}. V literaturi se unikatni tipi pogosto kar enačijo z linearnimi tipi oziroma se obravnavajo kot posebna vrsta linearnih tipov~\cite{pierce2004advanced, bernardy2018linear}. Za vrednosti linearnih tipov velja, da v \textit{prihodnosti} zagotovo ne bojo podvojene ali zavržene, medtem ko je za unikatne vrednosti zagotovljeno, da v \textit{preteklosti} še niso bile podvojene~\cite{marshall2022linearity, marshall2024functional}.
 
-... zagotavlja, da na vsako vrednost kaže natanko ena referenca.
+Ker včasih želimo da na eno vrednost kažeta dva kazalca, se tudi pri unikatnih tipih, podobno kot pri linearnih, uvede neomejene (angl. unrestricted) vrednosti. Razlika med linearnimi in unikatnimi tipi je v zmožnosti prehajanja med neomejenimi in omejenimi vrednostmi. Kot smo videli v poglavju \ref{sec:linearni-tipi}, lahko pri linearnem sistemu tipov med linearnimi in nelinearnimi vrednostmi prehajamo s pomočjo pravil \komentar{promocije} in \komentar{derelikcije}. S pomočjo derelikcije je lahko nelinearna spremenljivka v nadaljevanju uporabljena linearno, pri tem pa ni mogoče zagotoviti, da na to nelinearno spremenljivko kaže natanko ena referenca. To pa tudi pomeni, da v linearnem sistemu ne moremo zagotoviti unikatnosti vrednosti.
 
-V sistemu tipov, kjer je mora biti \textit{vsaka} vrednost linearna, je zagotovljeno tudi, da je vsaka vrednost unikatna~\cite{marshall2022linearity}. Linearni tipi namreč ne dovoljujejo podvajanja, zaradi česar je zagotovljeno, da bo referenca na nek vrednost vedno le ena. 
+Pri unikatnih sistemih tipov ni pravila, ki bi omogočala pretvorbo vrednosti neomejenega tipa nazaj v vrednost unikatnega tipa. Ker na neomejene tipe namreč lahko kaže poljubno mnogo kazalcev, jih ni mogoče obravnavati kot unikatne. Kot bomo lahko videli v poglavju \ref{sec:granule}, programski jezik Granule tako pretvorbo omogoča s ključno besedo \texttt{clone}, ki globoko kopira (angl. deep copy) vrednost na pomnilniku. S tem je sicer zagotovljena unikatnost, a je kopiranje precej neučinkovito, saj je potrebno klonirati celoten podgraf na pomnilniku~\cite{marshall2024functional}. Pri sistemih unikatnih tipov torej velja, da je vrednost unikatnega tipa mogoče pretvoriti v neomejeno vrednost, obratno pa ne. Linearni tipi so tako bolj uporabni pri zagotavljanju pravilne uporabe računalniških \komentar{sredstev} (angl. resource), medtem ko sistemi unikatnih tipov omogočajo ponovno uporabo struktur na pomnilniku in posodabljanje le-teh na mestu~\cite{marshall2022linearity}.
 
-Programski jezik Clean
+% Povezava Wadlerjevih steadfast tipov in unikatnih tipov
+V sistemu tipov, kjer je mora biti \textit{vsaka} vrednost linearna, je zagotovljeno tudi, da je vsaka vrednost unikatna~\cite{marshall2022linearity}. Linearni tipi namreč ne dovoljujejo podvajanja, zaradi česar je zagotovljeno, da bo referenca na nek vrednost vedno le ena. Wadlerjev sistem \komentar{steadfast} linearnih tipov~\cite{wadler1990linear} omeji pravili \komentar{promocije} in \komentar{derelikcije}, s čemer v jezik ponovno uvede pogoj za unikatnost reference. Sistem tipov jezika glede na definicijo bolj ustreza sistemu linearnih tipov, ki pa takrat še ni bil definiran.
 
-\subsection{Programski jezik Granule}
-\label{sec:}
-% \label{sec:unikaten-sistem-tipov}
+\subsubsection{Programski jezik Clean}
 
-Programski jezik Granule~\cite{orchard2019quantitative} je \textit{strog} funkcijski jezik, ki v svojem sistemu tipov združuje tako linearne, kot tudi \komentar{prevod} (angl. graded modal) tipe. 
-Za čiščenje pomnilnika se uporablja avtomatski čistilec.
+% Programski jezik Clean
+Eden izmed programskih jezikov, ki uporabljajo sistem unikatnih tipov, je len funkcijski jezik Clean~\cite{smetsers1994guaranteeing}. Za razliko od Haskella, ki za mutacije notranjega stanja in vhodno-izhodne operacije uporablja monade, Clean le-te implementira s pomočjo sistema unikatnih tipov. Prav tako zna prevajalnik unikatne vrednosti spreminjati na mestu, kar zmanjša porabo pomnilnika in omogoča hitrejše izvajanje programov.
 
-Granule uporablja linearen sistem tipov, pri katerem je potrebno nelinearne vrednosti označiti z eksponentnim graded modalityjem \texttt{!}.
+Spodnji primer prikazuje program v jeziku Clean. Konstruktor tipa $*T$ predstavlja unikaten tip $T$. Če predpostavljamo, da je \texttt{eat} tipa \texttt{Cake -> Happy} in \texttt{have} tipa \texttt{Cake -> Cake}, potem je naslednji program veljaven. 
 
-% Iz orchard2019quantitative:
-% Call-by-value was chosen for simplicity and since the effectful part of Gr is necessarily CBV (to avoid pitfalls of laziness with side effects). Previously, Brunel et al. [2014] provided a CBN abstract machine for BLL-style coeffects where reduction is suspended at promotion, i.e., [t] is a value, and Gaboardi et al. [2016] gave a CBN-based equational theory. This differs to our approach, but our system does not preclude a CBN semantics, which is further work. Such a semantics would trigger reduction when matching non-values against constructor patterns, which would cohere nicely with the consumption constraints on grades induced by pattern matching. The CBV approach, whilst simple, shows that our technique does not force us into the CBN semantics used previously, suggesting that we could add graded modal types to an existing eager language. Note that we do not parameterise our system by denotational models of the graded modalities, i.e, particular graded (co)monads. Exploring this, and its relationship to operational models, is future work.
+\begin{code-box}{haskell}{Clean}
+possible :: *Cake -> (Happy, Cake)
+possible cake = (eat cake, have cake)
+\end{code-box}
 
-V članku \cite{10.1145/3649848} programski jezik Granule razširijo s poenostavljenimi pravili za lastništvo in izposoje na podlagi tistih iz Rusta. Za čiščenje pomnilnika graded modal tipov, se še vedno uporablja avtomatski čistilec, medtem ko se za čiščenje unikatnih in linearnih tipov uporablja Rustov model upravljanja s pomnilnikom.
+Kot lahko vidimo, se argument \texttt{cake} v telesu funkcije pojavi dvakrat. Funkcija vzame unikaten kazalec na vrednost \texttt{Cake}, ker pa jo v telesu dvakrat uporabi, vrnjena vrednost izgubi unikatnost. Vrnjena vrednost je tako neomejenega tipa.
+
+\section{Programski jezik Granule}
+\label{sec:granule}
+
+Programski jezik Granule~\cite{orchard2019quantitative} je \textit{neučakan} \komentar{močno tipiziran} (angl. strongly typed) funkcijski jezik, ki v svojem sistemu tipov združuje linearne, indeksne in \komentar{graded modal} (angl. graded modal) tipe. Granule uporablja princip podatkov kot virov (angl. data as a resource) v svojem sistemu tipov. Za upravljanje s pomnilnikom je uporabljen avtomatičen čistilec. 
+
+S pomočjo linearnih tipov je v jeziku zagotovljen pogled na podatke kot na fizičen vir, ki mora biti uporabljen enkrat, nato pa nikoli več. Neomejena uporaba nekega vira mora biti v jeziku označena z eksponentnim \komentar{graded modalityjem} $!A$, ki omogoča, da je vrednost lahko deljena poljubno mnogokrat. Jezik poleg neomejene uporabe omogoča še določanje zgornje meje uporabe podatkov s pomočjo omejene linearne logike (angl. bounded linear logic)~\cite{girard1992bounded}. Tako lahko namesto neomejene uporabe $!A$, določimo zgornjo mejo uporabe vrednosti, tj. s $!_2 \, A$ označimo, da bo vrednost $A$ uporabljena \textit{največ} dvakrat.
+
+Preverjanje tipov je v jeziku Granule implementirano v dveh stopnjah: najprej se za izraze v programu izpelje trditve in omejitve glede njihovih tipov~\cite{orchard2019quantitative}, nato pa se trditve dokaže s pomočjo dokazovalnika Z3~\cite{demoura2008z3}. Izpeljava tipov (angl. type inference) za \komentar{statične} (angl. top-level) funkcije ni podprta, zato morajo biti označeni tipi vseh funkcij na statičnem nivoju. V Granule so vse funkcije privzeto linearne, zato se namesto operatorja za linearne funkcije $a \multimap b$, uporablja kar zapis $a \to b$. Neomejeni tipi kot jih poznamo iz linearne logike, so označeni s pripono \texttt{[]}. Taka oznaka je ekvivalentni oznaki \texttt{!}, ki jo je definiral Girard~\cite{girard1987linear}, omogoča pa poljubno mnogo uporab spremenljivke, tako da omogoči pravili \komentar{oslabitve} in \komentar{zoženja}. Jezik prav tako omogoča omejevanje števila uporab neke spremenljivke s pomočjo pripone \texttt{[n]}, ki določa, da je lahko število uporab spremenljivke največ $n$.
+
+Naslednji primer prikazuje identiteto, implementirano v jeziku Granule. Iz \komentar{prototipa} (angl. type annotation) lahko prevajalnik razbere, da je \texttt{id} funkcija, ki sprejme spremenljivko poljubnega tipa in jo zaradi linearnosti (konstruktor tipa $t \to t$), uporabi natanko enkrat.
+
+\begin{code-box}{text}{Granule}
+id : ∀ {t : Type} . t → t
+id x = x
+\end{code-box}
+
+V naslednjem primeru sta implementirani funkciji \texttt{drop} in \texttt{copy}, ki v jeziku z le linearnimi tipi, nista mogoči. Pri obeh funkcijah je označeno število uporab argumenta. Funkcija \texttt{drop} svojega argumenta ne uporabi, zato je označena z števnostjo \texttt{t [0]}, funkcija \texttt{copy} pa svoj argument uporabi dvakrat, kar je označeno s števnostjo \texttt{t [2]}.
+
+\begin{code-box}{text}{Granule}
+drop : ∀ {t : Type} . t [0] → ()
+drop [x] = ()
+
+copy : ∀ {t : Type} . t [2] → (t, t)
+copy [x] = (x, x)
+\end{code-box}
+
+\subsubsection{Unikatni tipi v jeziku Granule}
+% Razširitev Granule: unikatni tipi
+V programski jezik Granule je bila eksperimentalno poleg linearnih tipov dodana tudi podpora za unikatne tipe~\cite{marshall2022linearity}. Linearnost v takem jeziku omogoča boljši nadzor nad upravljanjem z resursi, medtem ko je unikatnost uporabljena za varno posodabljanje podatkov na mestu. Prevajalnik jezika Granule zna s pomočjo izpeljanih unikatnih tipov, generirati optimizirano Haskell kodo, ki \komentar{mutira} sezname na mestu. Avtorji so pokazali, da je uporaba unikatnih tipov za delo s tabelami učinkovitejša od uporabe nespremenljivih tabel (angl. immutable arrays). Rezultati so pokazali, da je različica z unikatnimi tabelami hitrejša in porabi bistveno manj časa za upravljanje s pomnilnikom. To je posledica dejstva, da se unikatni podatki \komentar{alocirajo} izven kopice GHC prevajalnika in se lahko eksplicitno sprostijo po njihovi uporabi. Avtorji tudi poudarijo, da sistem unikatnih tipov omogoča varno in učinkovito mutacijo podatkov neposredno v funkcijskem jeziku, brez potrebe po uporabi nepreverjene kode (angl. unsafe code), ki je npr. prisotna v Haskell knjižnicah za učinkovite operacije nad tabelami.
+
+\subsubsection{Model lastništva v jeziku Granule}
+% Razširitev Granule: ownership model
+
+Pozneje je bil sistem tipov jezika Granule še dodatno razširjen s pravili za lastništvo in izposojo na podlagi tistih iz Rusta~\cite{marshall2024functional}. Avtorji v članku povežejo koncepta linearnih in unikatnih tipov in vgradijo sistem lastništva in izposoje v sistem tipov za funkcijski programski jezik.
+
+Sistem lastništva v Rustu določa, da z vsako vrednostjo v pomnilniku upravlja natanko ena referenca. To se ujema z definicijo unikatnih vrednosti, zato avtorji osnovo za lastništvo objektov postavijo na sistem unikatnih tipov. Ker vrednosti unikatnega tipa ni mogoče podvajati, avtorji uvedejo ključno besedo \texttt{clone}, ki omogoča globoko kopiranje (angl. deep copy) objekta v pomnilniku. Po operaciji na novonastali objekt zagotovo kaže le en kazalec, s čemer je omogočeno, da lahko vrednost poljubnega tipa pretvorimo v unikaten tip. Dodana je še ključna beseda \texttt{share}, ki omogoča deljenje izraza. Pri deljenju se vrednost unikatnega tipa $*A$ pretvori v neomejeno vrednost $!A$, ki je od takrat naprej ni mogoče ponovno pretvoriti v unikaten tip. Za čiščenje pomnilnika neomejenih tipov se še vedno uporablja avtomatski čistilec, medtem ko se za čiščenje unikatnih in linearnih tipov uporablja Rustov model upravljanja s pomnilnikom.
+
+% Za sistem lastništva v Rustu velja, da na vsako vrednost na pomnilniku kaže natanko ena referenca. To ravno sovpada z definicijo unikatnih vrednosti, zato avtorji lastništvo objektov temeljijo na sitemu unikatnih tipov. Ker vrednosti unikatnega tipa ni mogoče podvajati, avtorji uvedejo ključno besedo \texttt{clone}, ki izvede globoko kopiranje objekta na pomnilniku. S tem je torej omogočeno, da lahko vrednost poljubnega tipa pretvorimo v unikaten tip. Dodana je še ključna beseda \texttt{share}, ki omogoča deljenje izraza. Pri deljenju se vrednost unikatnega $*A$ tipa pretvori v neomejeno vrednost $!A$, od takrat naprej pa je ni več mogoče pretvoriti v unikaten tip. Za čiščenje pomnilnika \komentar{graded modal} tipov, se še vedno uporablja avtomatski čistilec, medtem ko se za čiščenje unikatnih in linearnih tipov uporablja Rustov model upravljanja s pomnilnikom.
+
+Izposoje so v jeziku implementirane s pomočjo delnih pravic (angl. fractional permissions)~\cite{boyland2003checking}. Tipi z delnimi pravicami so označeni $\&_p A$, kjer $p$ predstavlja ali vrednost $*$ ali pa ulomek na intervalu $[0, 1]$. Vrednosti tipa $\&_{*} A$ predstavljajo unikatne izposoje in so z vrednostmi unikatnih tipov povezane s pomočjo enakosti $*A \equiv \&_{*} A$. Spremenljive izposoje so označene s tipom $\&_1 A$, pri nespremenljivih izposojah pa je $p < 1$. Z izrazom \texttt{split} je omogočeno, da se referenca $\&_p A$ razdeli na dve novi referenci, ki kažeta na isti objekt kot prvotna referenca. Novi referenci sta označeni s polovico dovoljenj prvotne reference, tj. referenci imata tipa $\&_{\frac{p}{2}} A$. Z izrazom \texttt{join} se dve obstoječi referenci združita v eno novo referenco, pri čemer se dovoljenja združenih referenc seštejeta~\cite{marshall2024functional}. Tako lahko spremenljivo referenco s pomočjo izraza \texttt{split} razdelimo na dve nespremenljivi referenci in s pomočjo izraza \texttt{join} ponovno združimo v spremenljivo referenco.
+
+Na tem mestu je še vredno omeniti, da je programski jezik Granule \textit{neučakan}. \komentar{``Call-by-value was chosen for simplicity and since the effectful part of Gr is necessarily CBV (to avoid pitfalls of laziness with side effects).``~\cite{orchard2019quantitative}. Preveriti moram še, zakaj je nujno imeti prenos po vrednosti.}
+
+% TODO: Napiši še kaj o call-by-need vs call-by-value?
+% Call-by-value was chosen for simplicity and since the effectful part of Gr is necessarily CBV (to avoid pitfalls of laziness with side effects).~\cite{orchard2019quantitative} Previously, Brunel et al. [2014] provided a CBN abstract machine for BLL-style coeffects where reduction is suspended at promotion, i.e., [t] is a value, and Gaboardi et al. [2016] gave a CBN-based equational theory. This differs to our approach, but our system does not preclude a CBN semantics, which is further work. Such a semantics would trigger reduction when matching non-values against constructor patterns, which would cohere nicely with the consumption constraints on grades induced by pattern matching. The CBV approach, whilst simple, shows that our technique does not force us into the CBN semantics used previously, suggesting that we could add graded modal types to an existing eager language. Note that we do not parameterise our system by denotational models of the graded modalities, i.e, particular graded (co)monads. Exploring this, and its relationship to operational models, is future work.
