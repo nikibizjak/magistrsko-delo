@@ -1,5 +1,0 @@
-main = THUNK(
-    let a = THUNK(12) in
-        let b = THUNK(&a) in
-            b
-)

@@ -1,8 +1,0 @@
-id :: T -> T
-id = FUN(x -> x)
-
-pack :: P -> R -> (P, R)
-pack = FUN(a b ->
-    let result = CON(Tuple a b) in
-        result
-)

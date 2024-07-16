@@ -1,6 +1,0 @@
-main = THUNK(
-    let a = THUNK(1) in
-        let b = THUNK(2) in
-            let c = CON(Pair a &b) in
-                c
-)
