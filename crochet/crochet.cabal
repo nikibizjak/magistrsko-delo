@@ -14,18 +14,9 @@ executable crochet
         Stg.Parser.Utils
         Stg.Parser
         Stg.Pretty
-        Stg.Ownership
         Stg.FreeVariables
         Stg.BoundVariables
         Stg.NameResolution
-        Stg.MoveCheck
-        Stg.BorrowCheck.Internal
-        Stg.BorrowCheck.Lifetime
-        Stg.BorrowCheck.Exception
-        Stg.BorrowCheck.Moves
-        Stg.BorrowCheck.Borrows
-        Stg.Types
-        Stg.BorrowCheck
         Stg.Interpreter.Types
         Stg.Interpreter.Internal
         Stg.Interpreter.Evaluation
