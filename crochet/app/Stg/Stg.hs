@@ -43,7 +43,6 @@ data Object
     | Constructor String [Atom]
     | Thunk Expression
     | BlackHole
-    | Indirection Int
     deriving (Show, Eq)
 
 data Binding =

@@ -31,8 +31,9 @@ data Continuation
     | UpdateContinuation HeapAddress
     | ApplyContinuation [Atom]
 
-data HeapObject =
-    HeapObject Object Environment
+data HeapObject
+    = HeapObject Object Environment
+    | Indirection HeapAddress
 
 data MachineState = MachineState
     { machineExpression :: Expression
@@ -58,6 +59,8 @@ instance Show Continuation where
 instance Show HeapObject where
     show (HeapObject object environment) =
         pretty object ++ " | " ++ showEnvironment environment
+    show (Indirection address) =
+        "INDIRECTION " ++ show address
 
 showEnvironment environment =
     let

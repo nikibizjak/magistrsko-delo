@@ -216,7 +216,7 @@ binding =
       return (Binding name body)
 
 declarations :: Parser [Binding]
-declarations = many binding
+declarations = spaces >> many binding
 
 parse :: String -> Either ParserException Program
 parse input =

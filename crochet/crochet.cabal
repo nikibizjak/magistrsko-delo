@@ -18,6 +18,7 @@ executable crochet
         Stg.BoundVariables
         Stg.NameResolution
         Stg.Interpreter.Types
+        Stg.Interpreter.Memory
         Stg.Interpreter.Internal
         Stg.Interpreter.Evaluation
         Stg.Interpreter.Utils

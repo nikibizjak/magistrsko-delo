@@ -77,6 +77,18 @@ renderEnvironment environment = do
             H.td $ code $ toHtml $ show address
             )
 
+renderHeapObject (address, object) =
+    H.tr $ do
+    case object of
+        HeapObject object environment -> do
+            H.td $ code $ toHtml $ show address
+            H.td $ code $ toHtml $ pretty object
+            H.td $ renderEnvironment environment
+        Indirection otherAddress -> do
+            H.td $ code $ toHtml $ show address
+            H.td $ code $ toHtml ("INDIRECTION " ++ show address)
+            H.td ""
+
 renderHeap heap = do
     H.h2 "Heap"
     H.table ! A.class_ "heap" $ do
@@ -88,10 +100,7 @@ renderHeap heap = do
 
         H.tbody $ do
             let heapItems = Map.toList heap
-            forM_ heapItems (\(address, HeapObject object environment) -> H.tr $ do
-                H.td $ code $ toHtml $ show address
-                H.td $ code $ toHtml $ pretty object
-                H.td $ renderEnvironment environment)
+            forM_ heapItems renderHeapObject
 
 renderStack stack = do
     H.h2 "Stack"

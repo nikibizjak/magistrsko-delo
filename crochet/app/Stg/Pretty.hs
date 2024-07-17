@@ -52,8 +52,6 @@ instance Pretty Object where
       else "CON(" ++ constructor ++ " " ++ unwords (map pretty arguments) ++ ")"
    pretty (Thunk expression) = "THUNK(" ++ pretty expression ++ ")"
    pretty BlackHole = "BLACKHOLE"
-   pretty (Indirection address) =
-      "INDIRECTION(" ++ pretty (Address address) ++ ")"
 
 instance Pretty Binding where
    pretty (Binding name value) = name ++ " = " ++ pretty value

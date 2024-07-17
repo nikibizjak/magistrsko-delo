@@ -15,8 +15,9 @@ module Stg.Interpreter.Evaluation where
 
 import Stg.Stg
 import Stg.Interpreter.Internal
-import qualified Data.Map as Map
 import Stg.Interpreter.Types
+import Stg.Interpreter.Memory ( initializeTopLevelObjects )
+import qualified Data.Map as Map
 
 evaluate :: Monad m => (MachineState -> m a) -> MachineState -> m (Either InterpreterException MachineState)
 evaluate debug machineState =
