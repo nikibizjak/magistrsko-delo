@@ -26,7 +26,7 @@ evaluateExpression state@MachineState {
         closureEnvironment = Map.restrictKeys environment requiredVariables
 
         -- Allocate a new heap closure
-        environment' = Map.insert name (EnvironmentAddress heapPointer) environment
+        environment' = Map.insert name (MemoryAddress heapPointer) environment
         heapObject = HeapObject value closureEnvironment
 
         (heap', heapPointer') = allocate heap heapPointer heapObject
@@ -54,12 +54,11 @@ evaluateExpression state@MachineState {
             Just (HeapObject (Constructor name arguments) closureEnvironment) = heapLookup (HeapAddress address) heap
             Just (AlgebraicAlternative constructor parameters body) = getAlgebraicAlternative name alternatives
 
-            -- TODO: Is it really necessary to use current environment? Or is
-            -- the closure environment enough?
-            environment' = Map.union environment closureEnvironment
+            environment' = Map.union closureEnvironment environment
 
-            newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
-            environment'' = Map.union newVariables environment'
+            argumentValues = map (getEnvironmentValue environment') arguments
+            parameterEnvironment = Map.fromList (zip parameters argumentValues)
+            environment'' = Map.union parameterEnvironment environment'
         in
             continue state {
                 machineExpression = traceStep "CASECON" state body,
@@ -76,7 +75,7 @@ evaluateExpression state@MachineState {
         Just (DefaultAlternative variable body) ->
             -- Replace variable x in body with the literal value v (e.g.
             -- body[v / x]).
-            let environment' = Map.insert variable (EnvironmentAddress (HeapAddress address)) environment in
+            let environment' = Map.insert variable (MemoryAddress (HeapAddress address)) environment in
                 continue state {
                     machineExpression = traceStep "CASEANY" state body,
                     machineEnvironment = environment'
@@ -95,7 +94,7 @@ evaluateExpression state@MachineState {
         Just (DefaultAlternative variable body) ->
             -- Replace variable x in body with the literal value v (e.g. body[v
             -- / x]).
-            let environment' = Map.insert variable (EnvironmentLiteral n) environment in
+            let environment' = Map.insert variable (MemoryInteger n) environment in
                 continue state {
                     machineExpression = traceStep "CASEANY" state body,
                     machineEnvironment = environment'
@@ -105,36 +104,56 @@ evaluateExpression state@MachineState {
 -- Rule CASE
 evaluateExpression state@MachineState {
     machineExpression = (CaseOf scrutinee alternatives),
-    machineStack = stack
+    machineStack = stack,
+    machineEnvironment = environment
 } =
     let
-        stack' = CaseContinuation alternatives : stack
+        requiredVariables = Set.unions (map freeVariables alternatives)
+        closureEnvironment = Map.restrictKeys environment requiredVariables
+
+        stack' = CaseContinuation alternatives closureEnvironment : stack
     in
         continue state {
             machineExpression = traceStep "CASE" state scrutinee,
             machineStack = stack'
         }
 
+-- Custom rule INDIRECTION (follows an indirection)
+evaluateExpression state@MachineState {
+    machineExpression = (Atom (Literal (Address address))),
+    machineHeap = heap
+} | isJustIndirection (heapLookup (HeapAddress address) heap)
+    =
+    let
+        Just (Indirection (HeapAddress otherAddress)) = heapLookup (HeapAddress address) heap
+    in
+        continue state {
+            machineExpression = traceStep "INDIRECTION" state Atom (Literal (Address otherAddress))
+        }
+
 -- Rule RET where H[v] is a value
 evaluateExpression state@MachineState {
     machineExpression = atom@(Atom (Literal (Address address))),
-    machineStack = (CaseContinuation alternatives) : stack',
-    machineHeap = heap
+    machineStack = (CaseContinuation alternatives closureEnvironment) : stack',
+    machineHeap = heap,
+    machineEnvironment = environment
 } | isJustHeapObjectValue (heapLookup (HeapAddress address) heap) =
     continue state {
         machineExpression = traceStep "RET" state CaseOf atom alternatives,
-        machineStack = stack'
+        machineStack = stack',
+        machineEnvironment = Map.union closureEnvironment environment
     }
 
 -- Rule RET where v is a literal
 evaluateExpression state@MachineState {
     machineExpression = atom@(Atom literal@(Literal n)),
-    machineStack = (CaseContinuation alternatives) : stack',
+    machineStack = (CaseContinuation alternatives closureEnvironment) : stack',
     machineEnvironment = environment
 } | isLiteral environment literal =
     continue state {
         machineExpression = traceStep "RET" state CaseOf atom alternatives,
-        machineStack = stack'
+        machineStack = stack',
+        machineEnvironment = Map.union closureEnvironment environment 
     }
 
 -- Rule THUNK
@@ -188,15 +207,13 @@ evaluateExpression state@MachineState {
         let
             Just (HeapObject (Function parameters body) closureEnvironment) = heapLookupVariable function environment heap
 
-            -- TODO: Do we actually need to merge environments?
-            environment' = Map.union environment closureEnvironment
-
-            newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
-            environment'' = Map.union newVariables environment'
+            argumentValues = map (getEnvironmentValue environment) arguments
+            parameterEnvironment = Map.fromList (zip parameters argumentValues)
+            environment' = Map.union parameterEnvironment closureEnvironment
         in
             continue state {
                 machineExpression = traceStep "KNOWNCALL" state body,
-                machineEnvironment = environment''
+                machineEnvironment = environment'
             }
 
 -- Rule PRIMOP
@@ -207,15 +224,15 @@ evaluateExpression state@MachineState {
     case (operation, arguments) of
         (Addition, [left, right]) ->
             let
-                (EnvironmentLiteral leftValue) = getAddress environment left
-                (EnvironmentLiteral rightValue) = getAddress environment right
+                (MemoryInteger leftValue) = getEnvironmentValue environment left
+                (MemoryInteger rightValue) = getEnvironmentValue environment right
                 result = Atom (Literal (Integer (leftValue + rightValue)))
             in
                 continue state { machineExpression = result }
         (Multiplication, [left, right]) ->
             let
-                (EnvironmentLiteral leftValue) = getAddress environment left
-                (EnvironmentLiteral rightValue) = getAddress environment right
+                (MemoryInteger leftValue) = getEnvironmentValue environment left
+                (MemoryInteger rightValue) = getEnvironmentValue environment right
                 result = Atom (Literal (Integer (leftValue * rightValue)))
             in
                 continue state { machineExpression = traceStep "PRIMOP" state result }
@@ -236,7 +253,7 @@ evaluateExpression state@MachineState {
         -- TODO: Do we actually need to merge environments?
         environment' = Map.union environment closureEnvironment
 
-        newVariables = Map.fromList (zip parameters (map (getAddress environment') arguments))
+        newVariables = Map.fromList (zip parameters (map (getEnvironmentValue environment') arguments))
         environment'' = Map.union newVariables environment'
     in
         continue state {
@@ -246,9 +263,7 @@ evaluateExpression state@MachineState {
 
 -- Rule CALLK
 evaluateExpression state@MachineState {
-    -- TODO: Must it always be (Known k) arity?
     machineExpression = FunctionApplication function (Known k) arguments,
-    -- machineExpression = FunctionApplication function _ arguments,
     machineStack = stack,
     machineHeap = heap,
     machineEnvironment = environment
@@ -262,20 +277,18 @@ evaluateExpression state@MachineState {
             -- Not all of the arguments are used. Only the first n = #
             -- parameters are used, the rest should be added to the stack as a
             -- continuation.
-            (usedArguments, restArguments) = splitAt (length parameters) arguments
+            argumentValues = map (getEnvironmentValue environment) arguments
+            (usedArguments, remainingArguments) = splitAt (length parameters) argumentValues
 
-            stack' = ApplyContinuation restArguments : stack
+            parameterEnvironment = Map.fromList (zip parameters usedArguments)
+            environment' = Map.union parameterEnvironment closureEnvironment
 
-            -- TODO: Do we actually need to merge environments?
-            environment' = Map.union environment closureEnvironment
-
-            newVariables = Map.fromList (zip parameters (map (getAddress environment') usedArguments))
-            environment'' = Map.union newVariables environment'
+            stack' = ApplyContinuation remainingArguments : stack
         in
             continue state {
                 machineExpression = traceStep "CALLK" state body,
                 machineStack = stack',
-                machineEnvironment = environment''
+                machineEnvironment = environment'
             }
 
 -- Rule PAP2
@@ -315,7 +328,7 @@ evaluateExpression state@MachineState {
     let
         Just (HeapObject (Thunk expression) closureEnvironment) = heapLookupVariable function environment heap
 
-        stack' = ApplyContinuation arguments : stack
+        stack' = ApplyContinuation (map (getEnvironmentValue environment) arguments) : stack
     in
         continue state {
             machineExpression = traceStep "TCALL" state Atom (Variable function),
@@ -356,24 +369,12 @@ evaluateExpression state@MachineState {
         _ -> False
     =
     let
-        expression' = FunctionApplication function Unknown arguments
+        atomicArguments = map memoryValueToAtom arguments
+        expression' = FunctionApplication function Unknown atomicArguments
     in
         continue state {
             machineExpression = traceStep "RETFUN" state expression',
             machineStack = stack'
-        }
-
--- Custom rule INDIRECTION (follows an indirection)
-evaluateExpression state@MachineState {
-    machineExpression = (Atom (Literal (Address address))),
-    machineHeap = heap
-} | isJustIndirection (heapLookup (HeapAddress address) heap)
-    =
-    let
-        Just (Indirection (HeapAddress otherAddress)) = heapLookup (HeapAddress address) heap
-    in
-        continue state {
-            machineExpression = traceStep "INDIRECTION" state Atom (Literal (Address otherAddress))
         }
 
 -- Custom rule VAR (converts variables to their addresses)
@@ -383,7 +384,11 @@ evaluateExpression state@MachineState {
 } =
     case Map.lookup name environment of
         Nothing -> throw $ "Variable '" ++ name ++ "' not in scope."
-        Just (EnvironmentAddress (HeapAddress address)) ->
+        Just (MemoryInteger n) ->
+            continue state {
+                machineExpression = traceStep "VAR" state Atom (Literal (Integer n))
+            }
+        Just (MemoryAddress (HeapAddress address)) ->
             continue state {
                 machineExpression = traceStep "VAR" state Atom (Literal (Address address))
             }

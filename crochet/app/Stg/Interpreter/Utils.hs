@@ -4,7 +4,7 @@ import Stg.Stg
 import Stg.Interpreter.Types
 import Debug.Trace
 import Stg.Pretty
-import Stg.Interpreter.Memory (getAddress)
+import Stg.Interpreter.Memory (getEnvironmentValue)
 
 throw :: String -> InterpreterResult
 throw text = Failure $ InterpreterException text
@@ -97,8 +97,8 @@ isJustIndirection = maybe False isIndirection
 
 isLiteral :: Environment -> Atom -> Bool
 isLiteral environment atom =
-    case getAddress environment atom of
-        EnvironmentLiteral _ -> True
+    case getEnvironmentValue environment atom of
+        MemoryInteger _ -> True
         _ -> False
 
 traceStep rule MachineState {
@@ -106,3 +106,9 @@ traceStep rule MachineState {
     machineStep = i
 } =
     trace $ show i ++ " (" ++ rule ++ "): " ++ pretty expression
+
+memoryValueToAtom :: MemoryValue -> Atom
+memoryValueToAtom value =
+    case value of
+        (MemoryAddress (HeapAddress address)) -> Literal $ Address address
+        (MemoryInteger value) -> Literal $ Integer value

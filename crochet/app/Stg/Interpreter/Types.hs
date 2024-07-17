@@ -15,11 +15,11 @@ newtype HeapAddress
 type Stack = [ Continuation ]
 type Heap = Map.Map HeapAddress HeapObject
 
-data EnvironmentValue
-    = EnvironmentAddress HeapAddress
-    | EnvironmentLiteral Int
+data MemoryValue
+    = MemoryAddress HeapAddress
+    | MemoryInteger Int
 
-type Environment = Map.Map String EnvironmentValue
+type Environment = Map.Map String MemoryValue
 
 data InterpreterResult
     = Failure InterpreterException
@@ -32,9 +32,9 @@ data InterpreterResult
     | Done MachineState
 
 data Continuation
-    = CaseContinuation [Alternative]
+    = CaseContinuation [Alternative] Environment
     | UpdateContinuation HeapAddress
-    | ApplyContinuation [Atom]
+    | ApplyContinuation [MemoryValue]
 
 data HeapObject
     = HeapObject Object Environment
@@ -58,16 +58,16 @@ instance Show HeapAddress where
     show (HeapAddress a) = printf "0x%04x" a
 
 instance Show Continuation where
-    show (CaseContinuation alternatives) =
-        "case . of " ++ unwords (map pretty alternatives)
+    show (CaseContinuation alternatives environment) =
+        "case . of " ++ unwords (map pretty alternatives) ++ " " ++ showEnvironment environment
     show (UpdateContinuation thunk) =
         "Update " ++ show thunk
     show (ApplyContinuation arguments) =
-        "Apply " ++ unwords (map pretty arguments)
+        "Apply " ++ unwords (map show arguments)
 
-instance Show EnvironmentValue where
-    show (EnvironmentAddress address) = show address
-    show (EnvironmentLiteral n) = show n
+instance Show MemoryValue where
+    show (MemoryAddress address) = show address
+    show (MemoryInteger n) = show n
 
 showEnvironment environment =
     let

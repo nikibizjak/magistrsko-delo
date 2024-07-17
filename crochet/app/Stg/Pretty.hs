@@ -31,15 +31,15 @@ instance Pretty Expression where
       "let " ++ name ++ " = " ++ pretty value ++ " in " ++ pretty body
    pretty (CaseOf scrutinee alternatives) =
       -- The fast curry paper assumes that the number of alternatives is > 0.
-      "case "  ++ pretty scrutinee ++ " of " ++ unwords (map pretty alternatives)
+      "case "  ++ pretty scrutinee ++ " of {" ++ intercalate "; " (map pretty alternatives) ++ "}"
 
 instance Pretty Alternative where
    pretty (AlgebraicAlternative constructor variables expression) =
       if null variables
-      then "| " ++ constructor ++ " -> " ++ pretty expression
-      else "| " ++ constructor ++ " " ++ unwords variables ++ " -> " ++ pretty expression
+      then constructor ++ " -> " ++ pretty expression
+      else constructor ++ " " ++ unwords variables ++ " -> " ++ pretty expression
    pretty (DefaultAlternative variable expression) =
-      "| " ++ variable ++ " -> " ++ pretty expression
+      variable ++ " -> " ++ pretty expression
 
 instance Pretty Object where
    pretty (Function variables expression) =

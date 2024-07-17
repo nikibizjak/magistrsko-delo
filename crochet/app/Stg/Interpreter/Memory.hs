@@ -5,6 +5,7 @@ import Stg.Stg
 import Stg.FreeVariables
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Debug.Trace
 
 -- Memory management
 allocate :: Heap -> HeapAddress -> HeapObject -> (Heap, HeapAddress)
@@ -19,7 +20,7 @@ allocateMany :: Heap -> HeapAddress -> Environment -> Program -> (Heap, HeapAddr
 allocateMany initialHeap initialHeapPointer initialEnvironment =
     foldr (\(Binding name object) (heap, heapPointer, environment) ->
         let
-            environment' = Map.insert name (EnvironmentAddress heapPointer) environment
+            environment' = Map.insert name (MemoryAddress heapPointer) environment
             (heap', heapPointer') = allocate heap heapPointer (HeapObject object Map.empty)
         in
             (heap', heapPointer', environment')
@@ -29,11 +30,11 @@ initializeTopLevelObjects :: Program -> (Heap, HeapAddress, Environment)
 initializeTopLevelObjects bindings =
     let
         topLevelNames = map (\(Binding name object) -> name) bindings
-        topLevelEnvironment = Map.fromList [(name, EnvironmentAddress (HeapAddress 0)) | name <- topLevelNames]
+        topLevelEnvironment = Map.fromList [(name, MemoryAddress (HeapAddress 0)) | name <- topLevelNames]
 
         (finalHeap, finalHeapPointer, finalEnvironment) = foldr (\(Binding name object) (heap, heapPointer, environment) ->
                 let
-                    environment' = Map.insert name (EnvironmentAddress heapPointer) environment
+                    environment' = Map.insert name (MemoryAddress heapPointer) environment
                     heapObject = HeapObject object Map.empty
                     (heap', heapPointer') = allocate heap heapPointer heapObject
                 in
@@ -55,22 +56,28 @@ heapLookup address heap =
     case Map.lookup address heap of
         Nothing -> Nothing
         Just object@(HeapObject _ _) -> Just object
-        Just (Indirection nextAddress) ->
-            -- Follow indirections
-            heapLookup nextAddress heap
+        Just object@(Indirection _) -> Just object
+        -- Just (Indirection nextAddress) ->
+        --     -- Follow indirections
+        --     heapLookup nextAddress heap
 
-resolveVariable variable environment  =
-    case Map.lookup variable environment of
+getEnvironmentValue :: Environment -> Atom -> MemoryValue
+getEnvironmentValue environment atom =
+    case atom of
+        Literal (Integer n) -> MemoryInteger n
+        Literal (Address address) -> MemoryAddress (HeapAddress address)
+        Variable name ->
+            -- Get the value of a variable in current environment.
+            resolveVariable environment name
+
+resolveVariable :: Environment -> Variable -> MemoryValue
+resolveVariable environment name =
+    case Map.lookup name environment of
         Just value -> value
+        _ -> trace ("Variable '" ++ name ++ "' not in environment.") (MemoryInteger 404)
 
 heapLookupVariable :: Variable -> Environment -> Heap -> Maybe HeapObject
 heapLookupVariable variable environment heap =
-    case resolveVariable variable environment of
-        (EnvironmentAddress address) -> heapLookup address heap
-
-getAddress :: Environment -> Atom -> EnvironmentValue
-getAddress environment atom =
-    case atom of
-        Literal (Integer n) -> EnvironmentLiteral n
-        Literal (Address address) -> EnvironmentAddress (HeapAddress address)
-        Variable name -> resolveVariable name environment
+    case resolveVariable environment variable of
+        (MemoryAddress address) -> heapLookup address heap
+        _ -> Nothing

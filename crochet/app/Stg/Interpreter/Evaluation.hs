@@ -36,7 +36,7 @@ initializeState program =
     in
         case Map.lookup "main" initialEnvironment of
             Nothing -> Left $ InterpreterException "Undefined function 'main'."
-            Just (EnvironmentAddress (HeapAddress address)) ->
+            Just (MemoryAddress (HeapAddress address)) ->
                 let
                     initialState = MachineState {
                         machineExpression = Atom (Literal (Address address)),
