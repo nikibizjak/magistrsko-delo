@@ -86,7 +86,7 @@ renderHeapObject (address, object) =
             H.td $ renderEnvironment environment
         Indirection otherAddress -> do
             H.td $ code $ toHtml $ show address
-            H.td $ code $ toHtml ("INDIRECTION " ++ show address)
+            H.td $ code $ toHtml ("INDIRECTION " ++ show otherAddress)
             H.td ""
 
 renderHeap heap = do
