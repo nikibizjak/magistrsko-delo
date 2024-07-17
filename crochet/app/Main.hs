@@ -8,6 +8,7 @@ import Stg.NameResolution
 import Stg.Parser
 import Stg.Pretty
 import Stg.Stg
+import Stg.ArityInference (inferArityProgram)
 
 main = do
   arguments <- parseArguments
@@ -45,7 +46,10 @@ execute debugFunction contents =
           putStrLn $ "[ ] Name resolution exception: " ++ exception
         Right _ -> do
 
-          result <- run debugFunction program
+          -- Automatically infer arities for function calls
+          let programWithArities = inferArityProgram program
+
+          result <- run debugFunction programWithArities
           case result of
             Left (InterpreterException exception) ->
               putStrLn $ "[ ] Interpreter exception: " ++ exception

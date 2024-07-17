@@ -17,6 +17,7 @@ executable crochet
         Stg.FreeVariables
         Stg.BoundVariables
         Stg.NameResolution
+        Stg.ArityInference
         Stg.Interpreter.Types
         Stg.Interpreter.Memory
         Stg.Interpreter.Internal
