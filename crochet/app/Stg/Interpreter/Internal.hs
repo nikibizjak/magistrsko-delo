@@ -32,7 +32,7 @@ evaluateExpression state@MachineState {
         (heap', heapPointer') = allocate heap heapPointer heapObject
     in
         continue state {
-            machineExpression = body,
+            machineExpression = traceStep "LET" state body,
             machineHeap = heap',
             machineHeapPointer = heapPointer',
             machineEnvironment = environment'
@@ -62,7 +62,7 @@ evaluateExpression state@MachineState {
             environment'' = Map.union newVariables environment'
         in
             continue state {
-                machineExpression = body,
+                machineExpression = traceStep "CASECON" state body,
                 machineEnvironment = environment''
             }
 
@@ -78,7 +78,7 @@ evaluateExpression state@MachineState {
             -- body[v / x]).
             let environment' = Map.insert variable (HeapAddress address) environment in
                 continue state {
-                    machineExpression = body,
+                    machineExpression = traceStep "CASEANY" state body,
                     machineEnvironment = environment'
                 }
         _ -> throw "No default alternative provided."
@@ -97,7 +97,7 @@ evaluateExpression state@MachineState {
             -- / x]).
             let environment' = Map.insert variable (HeapAddress n) environment in
                 continue state {
-                    machineExpression = body,
+                    machineExpression = traceStep "CASEANY" state body,
                     machineEnvironment = environment'
                 }
         _ -> throw "No default alternative provided."
@@ -111,7 +111,7 @@ evaluateExpression state@MachineState {
         stack' = CaseContinuation alternatives : stack
     in
         continue state {
-            machineExpression = scrutinee,
+            machineExpression = traceStep "CASE" state scrutinee,
             machineStack = stack'
         }
 
@@ -122,7 +122,7 @@ evaluateExpression state@MachineState {
     machineHeap = heap
 } | isJustHeapObjectValue (heapLookup (HeapAddress address) heap) =
     continue state {
-        machineExpression = CaseOf atom alternatives,
+        machineExpression = traceStep "RET" state CaseOf atom alternatives,
         machineStack = stack'
     }
 
@@ -133,7 +133,7 @@ evaluateExpression state@MachineState {
     machineHeap = heap
 } =
     continue state {
-        machineExpression = CaseOf atom alternatives,
+        machineExpression = traceStep "RET" state CaseOf atom alternatives,
         machineStack = stack'
     }
 
@@ -152,7 +152,7 @@ evaluateExpression state@MachineState {
         heap' = Map.insert (HeapAddress address) (HeapObject BlackHole Map.empty) heap
     in
         continue state {
-            machineExpression = expression,
+            machineExpression = traceStep "THUNK" state expression,
             machineStack = stack',
             machineHeap = heap',
             machineEnvironment = closureEnvironment
@@ -163,16 +163,14 @@ evaluateExpression state@MachineState {
     machineExpression = expression@(Atom (Literal (Address address))),
     machineStack = (UpdateContinuation updateAddress) : stack',
     machineHeap = heap,
-    machineHeapPointer = heapPointer,
-    machineEnvironment = environment,
-    machineStep = i
+    machineEnvironment = environment
 } | isJustHeapObjectValue (heapLookup (HeapAddress address) heap) =
     let
         (Just heapObject) = heapLookup (HeapAddress address) heap
         heap' = Map.insert updateAddress (Indirection (HeapAddress address)) heap
     in
         continue state {
-            machineExpression = expression,
+            machineExpression = traceStep "UPDATE" state expression,
             machineHeap = heap',
             machineStack = stack'
         }
@@ -184,7 +182,7 @@ evaluateExpression state@MachineState {
     machineHeapPointer = heapPointer,
     machineEnvironment = environment
 } | case heapLookupVariable function environment heap of
-        Just (HeapObject (Function parameters _) _) -> length parameters == n
+        Just (HeapObject (Function parameters _) _) -> (length parameters == n) && (length arguments == n)
         _ -> False
     =
         let
@@ -197,7 +195,7 @@ evaluateExpression state@MachineState {
             environment'' = Map.union newVariables environment'
         in
             continue state {
-                machineExpression = body,
+                machineExpression = traceStep "KNOWNCALL" state body,
                 machineEnvironment = environment''
             }
 
@@ -220,15 +218,14 @@ evaluateExpression state@MachineState {
                 (HeapAddress rightValue) = getAddress environment right
                 result = Atom (Literal (Integer (leftValue * rightValue)))
             in
-                continue state { machineExpression = result }
+                continue state { machineExpression = traceStep "PRIMOP" state result }
         _ -> throw "Invalid usage of primitive operation."
 
 -- Rule EXACT
 evaluateExpression state@MachineState {
     machineExpression = FunctionApplication function Unknown arguments,
     machineHeap = heap,
-    machineEnvironment = environment,
-    machineStep = i
+    machineEnvironment = environment
 } | case heapLookupVariable function environment heap of
         Just (HeapObject (Function parameters _) _) -> length arguments == length parameters
         _ -> False
@@ -243,15 +240,15 @@ evaluateExpression state@MachineState {
         environment'' = Map.union newVariables environment'
     in
         continue state {
-            machineExpression = body,
+            machineExpression = traceStep "EXACT" state body,
             machineEnvironment = environment''
         }
 
 -- Rule CALLK
 evaluateExpression state@MachineState {
     -- TODO: Must it always be (Known k) arity?
-    -- machineExpression = FunctionApplication function (Known k) arguments,
-    machineExpression = FunctionApplication function _ arguments,
+    machineExpression = FunctionApplication function (Known k) arguments,
+    -- machineExpression = FunctionApplication function _ arguments,
     machineStack = stack,
     machineHeap = heap,
     machineEnvironment = environment
@@ -276,7 +273,7 @@ evaluateExpression state@MachineState {
             environment'' = Map.union newVariables environment'
         in
             continue state {
-                machineExpression = body,
+                machineExpression = traceStep "CALLK" state body,
                 machineStack = stack',
                 machineEnvironment = environment''
             }
@@ -284,8 +281,8 @@ evaluateExpression state@MachineState {
 -- Rule PAP2
 evaluateExpression state@MachineState {
     -- TODO: Must it always be
-    -- machineExpression = FunctionApplication function (Known k) arguments,
-    machineExpression = FunctionApplication function _ arguments,
+    machineExpression = FunctionApplication function (Known k) arguments,
+    -- machineExpression = FunctionApplication function _ arguments,
     machineHeap = heap,
     machineHeapPointer = heapPointer,
     machineEnvironment = environment
@@ -303,7 +300,7 @@ evaluateExpression state@MachineState {
             (heap', heapPointer') = allocate heap heapPointer partialApplication
         in
             continue state {
-                machineExpression = Atom (Literal (Address partialApplicationAddress)),
+                machineExpression = traceStep "PAP2" state Atom (Literal (Address partialApplicationAddress)),
                 machineHeap = heap',
                 machineHeapPointer = heapPointer'
             }
@@ -321,15 +318,15 @@ evaluateExpression state@MachineState {
         stack' = ApplyContinuation arguments : stack
     in
         continue state {
-            machineExpression = Atom (Variable function),
+            machineExpression = traceStep "TCALL" state Atom (Variable function),
             machineStack = stack'
         }
 
 -- Rule PCALL
 evaluateExpression state@MachineState {
     -- TODO: Must it always be
-    -- machineExpression = FunctionApplication function (Known k) arguments,
-    machineExpression = FunctionApplication function _ arguments,
+    machineExpression = FunctionApplication function (Known k) arguments,
+    -- machineExpression = FunctionApplication function _ arguments,
     machineHeap = heap,
     machineEnvironment = environment
 } | isJustPartialApplication (heapLookupVariable function environment heap) =
@@ -343,7 +340,7 @@ evaluateExpression state@MachineState {
         environment' = Map.union environment closureEnvironment
     in
         continue state {
-            machineExpression = expression',
+            machineExpression = traceStep "PCALL" state expression',
             machineEnvironment = environment'
         }
 
@@ -363,8 +360,21 @@ evaluateExpression state@MachineState {
         expression' = FunctionApplication function Unknown arguments
     in
         continue state {
-            machineExpression = expression',
+            machineExpression = traceStep "RETFUN" state expression',
             machineStack = stack'
+        }
+
+-- Custom rule INDIRECTION (follows an indirection)
+evaluateExpression state@MachineState {
+    machineExpression = (Atom (Literal (Address address))),
+    machineHeap = heap
+} | isJustIndirection (heapLookup (HeapAddress address) heap)
+    =
+    let
+        Just (Indirection (HeapAddress otherAddress)) = heapLookup (HeapAddress address) heap
+    in
+        continue state {
+            machineExpression = traceStep "INDIRECTION" state Atom (Literal (Address otherAddress))
         }
 
 -- Custom rule VAR (converts variables to their addresses)
@@ -376,7 +386,7 @@ evaluateExpression state@MachineState {
         Nothing -> throw $ "Variable '" ++ name ++ "' not in scope."
         Just (HeapAddress address) ->
             continue state {
-                machineExpression = Atom (Literal (Address address))
+                machineExpression = traceStep "VAR" state Atom (Literal (Address address))
             }
 
 evaluateExpression state@MachineState {

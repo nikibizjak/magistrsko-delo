@@ -2,6 +2,8 @@ module Stg.Interpreter.Utils where
 
 import Stg.Stg
 import Stg.Interpreter.Types
+import Debug.Trace
+import Stg.Pretty
 
 throw :: String -> InterpreterResult
 throw text = Failure $ InterpreterException text
@@ -73,6 +75,10 @@ isPartialApplication :: HeapObject -> Bool
 isPartialApplication (HeapObject (PartialApplication _ _) _) = True
 isPartialApplication _ = False
 
+isIndirection :: HeapObject -> Bool
+isIndirection (Indirection _) = True
+isIndirection _ = False
+
 isJustConstructor :: Maybe HeapObject -> Bool
 isJustConstructor = maybe False isConstructor
 
@@ -84,3 +90,13 @@ isJustFunction = maybe False isFunction
 
 isJustPartialApplication :: Maybe HeapObject -> Bool
 isJustPartialApplication = maybe False isPartialApplication
+
+isJustIndirection :: Maybe HeapObject -> Bool
+isJustIndirection = maybe False isIndirection
+
+
+traceStep rule MachineState {
+    machineExpression = expression,
+    machineStep = i
+} =
+    trace $ show i ++ " (" ++ rule ++ "): " ++ pretty expression
