@@ -4,6 +4,7 @@ import Stg.Stg
 import Stg.Interpreter.Types
 import Debug.Trace
 import Stg.Pretty
+import Stg.Interpreter.Memory (getAddress)
 
 throw :: String -> InterpreterResult
 throw text = Failure $ InterpreterException text
@@ -94,6 +95,11 @@ isJustPartialApplication = maybe False isPartialApplication
 isJustIndirection :: Maybe HeapObject -> Bool
 isJustIndirection = maybe False isIndirection
 
+isLiteral :: Environment -> Atom -> Bool
+isLiteral environment atom =
+    case getAddress environment atom of
+        EnvironmentLiteral _ -> True
+        _ -> False
 
 traceStep rule MachineState {
     machineExpression = expression,

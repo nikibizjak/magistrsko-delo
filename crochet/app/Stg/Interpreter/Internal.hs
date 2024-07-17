@@ -26,7 +26,7 @@ evaluateExpression state@MachineState {
         closureEnvironment = Map.restrictKeys environment requiredVariables
 
         -- Allocate a new heap closure
-        environment' = Map.insert name heapPointer environment
+        environment' = Map.insert name (EnvironmentAddress heapPointer) environment
         heapObject = HeapObject value closureEnvironment
 
         (heap', heapPointer') = allocate heap heapPointer heapObject
@@ -76,7 +76,7 @@ evaluateExpression state@MachineState {
         Just (DefaultAlternative variable body) ->
             -- Replace variable x in body with the literal value v (e.g.
             -- body[v / x]).
-            let environment' = Map.insert variable (HeapAddress address) environment in
+            let environment' = Map.insert variable (EnvironmentAddress (HeapAddress address)) environment in
                 continue state {
                     machineExpression = traceStep "CASEANY" state body,
                     machineEnvironment = environment'
@@ -95,7 +95,7 @@ evaluateExpression state@MachineState {
         Just (DefaultAlternative variable body) ->
             -- Replace variable x in body with the literal value v (e.g. body[v
             -- / x]).
-            let environment' = Map.insert variable (HeapAddress n) environment in
+            let environment' = Map.insert variable (EnvironmentLiteral n) environment in
                 continue state {
                     machineExpression = traceStep "CASEANY" state body,
                     machineEnvironment = environment'
@@ -128,10 +128,10 @@ evaluateExpression state@MachineState {
 
 -- Rule RET where v is a literal
 evaluateExpression state@MachineState {
-    machineExpression = atom@(Atom (Literal n)),
+    machineExpression = atom@(Atom literal@(Literal n)),
     machineStack = (CaseContinuation alternatives) : stack',
-    machineHeap = heap
-} =
+    machineEnvironment = environment
+} | isLiteral environment literal =
     continue state {
         machineExpression = traceStep "RET" state CaseOf atom alternatives,
         machineStack = stack'
@@ -207,15 +207,15 @@ evaluateExpression state@MachineState {
     case (operation, arguments) of
         (Addition, [left, right]) ->
             let
-                (HeapAddress leftValue) = getAddress environment left
-                (HeapAddress rightValue) = getAddress environment right
+                (EnvironmentLiteral leftValue) = getAddress environment left
+                (EnvironmentLiteral rightValue) = getAddress environment right
                 result = Atom (Literal (Integer (leftValue + rightValue)))
             in
                 continue state { machineExpression = result }
         (Multiplication, [left, right]) ->
             let
-                (HeapAddress leftValue) = getAddress environment left
-                (HeapAddress rightValue) = getAddress environment right
+                (EnvironmentLiteral leftValue) = getAddress environment left
+                (EnvironmentLiteral rightValue) = getAddress environment right
                 result = Atom (Literal (Integer (leftValue * rightValue)))
             in
                 continue state { machineExpression = traceStep "PRIMOP" state result }
@@ -356,7 +356,6 @@ evaluateExpression state@MachineState {
         _ -> False
     =
     let
-
         expression' = FunctionApplication function Unknown arguments
     in
         continue state {
@@ -384,7 +383,7 @@ evaluateExpression state@MachineState {
 } =
     case Map.lookup name environment of
         Nothing -> throw $ "Variable '" ++ name ++ "' not in scope."
-        Just (HeapAddress address) ->
+        Just (EnvironmentAddress (HeapAddress address)) ->
             continue state {
                 machineExpression = traceStep "VAR" state Atom (Literal (Address address))
             }

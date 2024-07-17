@@ -1,6 +1,6 @@
 module Stg.Interpreter.Debug.Print (debugPrint) where
 
-import Stg.Interpreter.Types (MachineState(..))
+import Stg.Interpreter.Types (MachineState(..), HeapAddress, HeapObject)
 import Stg.Pretty
 import qualified Data.Map as Map
 
@@ -20,6 +20,7 @@ printStack MachineState { machineStack = stack } = do
     putStrLn "Stack: "
     putStrLn (unlines (map show stack))
 
+showMap :: (Show k, Show a) => Map.Map k a -> String
 showMap mapping =
     let
         showItem (address, value) =

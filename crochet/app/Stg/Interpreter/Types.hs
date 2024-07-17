@@ -14,7 +14,12 @@ newtype HeapAddress
 
 type Stack = [ Continuation ]
 type Heap = Map.Map HeapAddress HeapObject
-type Environment = Map.Map String HeapAddress
+
+data EnvironmentValue
+    = EnvironmentAddress HeapAddress
+    | EnvironmentLiteral Int
+
+type Environment = Map.Map String EnvironmentValue
 
 data InterpreterResult
     = Failure InterpreterException
@@ -34,6 +39,10 @@ data Continuation
 data HeapObject
     = HeapObject Object Environment
     | Indirection HeapAddress
+
+instance Show HeapObject where
+    show (HeapObject object environment) = show object
+    show (Indirection address) = "INDIRECTION(" ++ show address ++ ")"
 
 data MachineState = MachineState
     { machineExpression :: Expression
@@ -56,11 +65,9 @@ instance Show Continuation where
     show (ApplyContinuation arguments) =
         "Apply " ++ unwords (map pretty arguments)
 
-instance Show HeapObject where
-    show (HeapObject object environment) =
-        pretty object ++ " | " ++ showEnvironment environment
-    show (Indirection address) =
-        "INDIRECTION " ++ show address
+instance Show EnvironmentValue where
+    show (EnvironmentAddress address) = show address
+    show (EnvironmentLiteral n) = show n
 
 showEnvironment environment =
     let
