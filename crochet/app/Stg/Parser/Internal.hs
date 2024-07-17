@@ -79,16 +79,23 @@ defaultAlternative =
     spaces >> word "->" >> spaces >> expression >>= \expression ->
     return (DefaultAlternative name expression)
 
+-- constructorName = [A-Z][_a-zA-Z0-9]*
+constructorName :: Parser String
+constructorName =
+  alphaUpper >>= \first ->
+    many (oneOf [underscore, alphaAny, digit]) >>= \rest ->
+      return (first : rest)
+
 algebraicAlternative :: Parser Alternative
 algebraicAlternative =
-    identifier >>= \constructor ->
+    constructorName >>= \constructor ->
     many (spaces1 >> variable) >>= \parameters ->
     spaces >> word "->" >> spaces >> expression >>= \body ->
     return (AlgebraicAlternative constructor parameters body)
 
 alternative :: Parser Alternative
 alternative =
-    oneOf [ defaultAlternative, algebraicAlternative ]
+    oneOf [ algebraicAlternative, defaultAlternative ]
 
 alternatives :: Parser [Alternative]
 alternatives =
