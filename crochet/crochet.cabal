@@ -25,6 +25,7 @@ executable crochet
         Stg.Interpreter.Utils
         Stg.Interpreter.Debug.Html
         Stg.Interpreter.Debug.Print
+        Stg.Interpreter.GarbageCollection
         Stg.Interpreter
     build-depends:
         base == 4.17.2.1,
