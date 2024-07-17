@@ -219,23 +219,61 @@ evaluateExpression state@MachineState {
 -- Rule PRIMOP
 evaluateExpression state@MachineState {
     machineExpression = PrimitiveOperation operation arguments,
-    machineEnvironment = environment
+    machineEnvironment = environment,
+    machineHeap = heap,
+    machineHeapPointer = heapPointer
 } =
-    case (operation, arguments) of
-        (Addition, [left, right]) ->
+    case arguments of
+
+        -- Binary operations on integers
+        [left, right] | operation `elem` [Addition, Subtraction, Multiplication, Division, Modulo] ->
             let
                 (MemoryInteger leftValue) = getEnvironmentValue environment left
                 (MemoryInteger rightValue) = getEnvironmentValue environment right
-                result = Atom (Literal (Integer (leftValue + rightValue)))
+
+                f = case operation of
+                    Addition -> (+)
+                    Subtraction -> (-)
+                    Multiplication -> (*)
+                    Division -> div
+                    Modulo -> mod
+                
+                result = f leftValue rightValue
+                atomicResult = Atom (Literal (Integer result))
             in
-                continue state { machineExpression = result }
-        (Multiplication, [left, right]) ->
+                continue state { machineExpression = traceStep "PRIMOP" state atomicResult }
+        
+        -- Binary comparison operations
+        [left, right] | operation `elem` [GreaterThanOrEqual, GreaterThan, Equal, LessThan, LessThanOrEqual, NotEqual] ->
             let
                 (MemoryInteger leftValue) = getEnvironmentValue environment left
                 (MemoryInteger rightValue) = getEnvironmentValue environment right
-                result = Atom (Literal (Integer (leftValue * rightValue)))
+
+                f = case operation of
+                    GreaterThanOrEqual -> (>=)
+                    GreaterThan -> (>)
+                    Equal -> (==)
+                    LessThan -> (<)
+                    LessThanOrEqual -> (<=)
+                    NotEqual -> (/=)
+                
+                result = f leftValue rightValue
+
+                -- Allocate a new CON object (True or False) based on the result
+                -- of the comparison.
+                object = Constructor (if result then "True" else "False") []
+                heapObject = HeapObject object Map.empty
+                (HeapAddress heapPointerAddress) = heapPointer
+                (heap', heapPointer') = allocate heap heapPointer heapObject
+
+                expression = Atom (Literal (Address heapPointerAddress))
             in
-                continue state { machineExpression = traceStep "PRIMOP" state result }
+                continue state {
+                    machineExpression = traceStep "PRIMOP" state expression,
+                    machineHeap = heap',
+                    machineHeapPointer = heapPointer'
+                }
+        
         _ -> throw "Invalid usage of primitive operation."
 
 -- Rule EXACT

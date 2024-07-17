@@ -30,6 +30,15 @@ data Expression
 data PrimitiveOperation
     = Addition
     | Multiplication
+    | Subtraction
+    | Division
+    | Modulo
+    | GreaterThanOrEqual
+    | GreaterThan
+    | Equal
+    | LessThan
+    | LessThanOrEqual
+    | NotEqual
     deriving (Show, Eq)
 
 data Alternative

@@ -59,3 +59,12 @@ instance Pretty Binding where
 instance Pretty PrimitiveOperation where
    pretty Addition = "add"
    pretty Multiplication = "multiply"
+   pretty Subtraction = "subtract"
+   pretty Division = "divide"
+   pretty Modulo = "modulo"
+   pretty GreaterThanOrEqual = "geq"
+   pretty GreaterThan = "gt"
+   pretty Equal = "eq"
+   pretty LessThan = "neq"
+   pretty LessThanOrEqual = "leq"
+   pretty NotEqual = "le"

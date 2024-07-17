@@ -120,8 +120,41 @@ addition = word "+#" >> return Addition
 multiplication :: Parser PrimitiveOperation
 multiplication = word "*#" >> return Multiplication
 
+subtraction :: Parser PrimitiveOperation
+subtraction = word "-#" >> return Subtraction
+
+division :: Parser PrimitiveOperation
+division = word "/#" >> return Division
+
+modulo :: Parser PrimitiveOperation
+modulo = word "%#" >> return Modulo
+
+integerOperation :: Parser PrimitiveOperation
+integerOperation = oneOf [ addition, multiplication, subtraction, division ]
+
+lessThan :: Parser PrimitiveOperation
+lessThan = word "<#" >> return LessThan
+
+lessThanOrEqual :: Parser PrimitiveOperation
+lessThanOrEqual = word "<=#" >> return LessThanOrEqual
+
+equal :: Parser PrimitiveOperation
+equal = word "==#" >> return Equal
+
+notEqual :: Parser PrimitiveOperation
+notEqual = word "/=#" >> return NotEqual
+
+greaterThanOrEqual :: Parser PrimitiveOperation
+greaterThanOrEqual = word ">=#" >> return GreaterThanOrEqual
+
+greaterThan :: Parser PrimitiveOperation
+greaterThan = word ">#" >> return GreaterThan
+
+comparisonOperation :: Parser PrimitiveOperation
+comparisonOperation = oneOf [lessThan, lessThanOrEqual, equal, notEqual, greaterThanOrEqual, greaterThan]
+
 operation :: Parser PrimitiveOperation
-operation = oneOf [ addition, multiplication ]
+operation = oneOf [ integerOperation, comparisonOperation ]
 
 primitiveOperation :: Parser Expression
 primitiveOperation =
