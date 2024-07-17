@@ -2,7 +2,6 @@ module Stg.Interpreter.Utils where
 
 import Stg.Stg
 import Stg.Interpreter.Types
-import Debug.Trace
 import Stg.Pretty
 import Stg.Interpreter.Memory (getEnvironmentValue)
 
@@ -101,11 +100,13 @@ isLiteral environment atom =
         MemoryInteger _ -> True
         _ -> False
 
+traceStep :: String -> MachineState -> a -> a
 traceStep rule MachineState {
     machineExpression = expression,
     machineStep = i
-} =
-    trace $ show i ++ " (" ++ rule ++ "): " ++ pretty expression
+} continuation =
+    -- trace $ show i ++ " (" ++ rule ++ "): " ++ pretty expression
+    continuation
 
 memoryValueToAtom :: MemoryValue -> Atom
 memoryValueToAtom value =
