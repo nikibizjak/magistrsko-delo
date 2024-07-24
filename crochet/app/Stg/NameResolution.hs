@@ -36,10 +36,11 @@ instance NameResolution Expression where
     nameResolution environment (PrimitiveOperation _ arguments) =
         nameResolutionMultiple environment arguments
     nameResolution environment (LetIn name object body) =
-        let environment' = name : environment in
-        case nameResolution environment' object of
+        case nameResolution environment object of
             Left exception -> Left exception
-            Right _ -> nameResolution environment' body
+            Right _ ->
+                let environment' = name : environment in
+                    nameResolution environment' body
     nameResolution environment (CaseOf scrutinee alternatives) =
         case nameResolution environment scrutinee of
             Left exception -> Left exception
