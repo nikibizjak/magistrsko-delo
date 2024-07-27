@@ -94,3 +94,10 @@
 \label{ch:zakljucek}
 
 V sklopu magistrskega dela nam je uspelo implementirati delujoč abstraktni STG stroj.
+
+Zaradi lenosti jezika je izračun življenjskih dob praktično nemogoč, kar pomeni, da Rustov princip čiščenja pomnilnika ne pride v poštev. Ker ne moremo izračunati življenjskih dob, v STG ne moremo implementirati izposoje. Kar se tiče pa samega lastništva iz Rusta, je pa to zelo podobno linearnim oziroma edinstvenim tipom (angl. uniqueness types). Ti so bili v Haskell že implementirani (glej "Linear Haskell: practical linearity in a higher-order polymorphic language"~\cite{bernardy2018linear}). Če v jezik uvedemo le linearne tipe, jezik zelo omejimo in postane dokaj neuporaben. Zato navadno dodamo še nelinearne tipe, zaradi katerih pa:
+
+\begin{enumerate}
+    \item jezik ni več povsem len (glej poglavje 3.1.1)
+    \item v jeziku še vedno potrebujemo avtomatičen čistilec pomnilnika (linearne tipe lahko počistimo brez, nelinearnih pa na žalost ne)
+\end{enumerate}

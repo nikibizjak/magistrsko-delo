@@ -1,4 +1,4 @@
-@article{10.1145/72551.72554,
+@article{hudak1989conception,
 	author     = {Hudak, Paul},
 	title      = {Conception, Evolution, and Application of Functional Programming Languages},
 	year       = {1989},
@@ -67,7 +67,6 @@
 	booktitle = {Proceedings of Joint Framework for Information Technology Technical Conference, Keele}
 }
 
-% STG - original (push, enter)
 @article{jones1992implementing,
 	title     = {{Implementing lazy functional languages on stock hardware: the Spineless Tagless G-machine}},
 	author    = {Jones, Simon L Peyton},
@@ -90,7 +89,6 @@
 	publisher={Cambridge University Press}
 }
 
-% STG - improved (eval, apply)
 @book{jones2023garbage,
 	title     = {The garbage collection handbook: the art of automatic memory management},
 	author    = {Jones, Richard and Hosking, Antony and Moss, Eliot},
@@ -98,15 +96,14 @@
 	publisher = {CRC Press}
 }
 
-% Miranda
-@phdthesis{Jung,
-	title  = {Understanding and evolving the {Rust} programming language},
-	author = {Jung, Ralf},
-	year   = {2020},
-	school = {Saarland University}
+% HERE
+@phdthesis{jung2020understanding,
+    author  = {Jung, Ralf},
+    title   = {Understanding and evolving the {Rust} programming language},
+    school  = {Saarland University},
+    year    = {2020}
 }
 
-% Elm
 @book{klabnik2023rust,
 	title     = {The Rust Programming Language, 2nd Edition},
 	author    = {Klabnik, S. and Nichols, C.},
@@ -114,15 +111,13 @@
 	publisher = {No Starch Press}
 }
 
-% Clean
-@mastersthesis{Kocjan_Turk_2022,
+@mastersthesis{turk2022len,
 	title  = {Len funkcijski programski jezik brez čistilca pomnilnika},
 	school = {Univerza v Ljubljani},
 	author = {Kocjan Turk, Toni},
 	year   = {2022}
 }
 
-% F#
 @article{marlow2004making,
 	title     = {Making a fast curry: push/enter vs. eval/apply for higher-order languages},
 	author    = {Marlow, Simon and Jones, Simon Peyton},
@@ -134,7 +129,6 @@
 	publisher = {ACM New York, NY, USA}
 }
 
-% Scheme
 @article{mccarthy1960recursive,
 	title     = {Recursive functions of symbolic expressions and their computation by machine, part {I}},
 	author    = {McCarthy, John},
@@ -146,15 +140,15 @@
 	publisher = {ACM New York, NY, USA}
 }
 
-@article{Oxide,
-	title   = {Oxide: The essence of {Rust}},
-	author  = {Weiss, Aaron and Gierczak, Olek and Patterson, Daniel and Ahmed, Amal},
-	journal = {arXiv preprint arXiv:1903.00982},
-	year    = {2019}
+@misc{weiss2021oxide,
+      title={Oxide: The Essence of Rust}, 
+      author={Aaron Weiss and Olek Gierczak and Daniel Patterson and Amal Ahmed},
+      year={2021},
+      eprint={1903.00982},
+      archivePrefix={arXiv},
+      primaryClass={cs.PL}
 }
 
-
-% Toni  Kocjan Turk
 @book{peyton1987implementation,
 	title     = {The implementation of functional programming languages (prentice-hall international series in computer science)},
 	author    = {Peyton Jones, Simon L},
@@ -162,7 +156,6 @@
 	publisher = {{Prentice-Hall, Inc.}}
 }
 
-% Grin compiler
 @article{podlovics2022modern,
 	title     = {A modern look at {GRIN}, an optimizing functional language back end},
 	author    = {Podlovics, Peter and Hruska, Csaba and P{\'e}nzes, Andor},
@@ -174,7 +167,6 @@
 	publisher = {University of Szeged}
 }
 
-% Garbage collection - Haskell
 @inproceedings{sansom1993generational,
 	title     = {{Generational garbage collection for Haskell}},
 	author    = {Sansom, Patrick M and Peyton Jones, Simon L},
@@ -183,7 +175,6 @@
 	year      = {1993}
 }
 
-% Haskell - Garbage collection
 @article{sperber2009revised6,
 	title     = {{Revised6 report on the algorithmic language Scheme}},
 	author    = {Sperber, Michael and Dybvig, R Kent and Flatt, Matthew and Van Straaten, Anton and Findler, Robby and Matthews, Jacob},
@@ -195,8 +186,6 @@
 	publisher = {Cambridge University Press}
 }
 
-
-% Rust
 @article{StackedBorrows,
 	title     = {Stacked borrows: an aliasing model for Rust},
 	author    = {Jung, Ralf and Dang, Hoang-Hai and Kang, Jeehoon and Dreyer, Derek},
@@ -210,7 +199,7 @@
 
 @misc{syme2017the,
 	author    = {Syme, Don},
-	title     = {The F\# Compiler Technical Overview},
+	title     = {The {F\#} Compiler Technical Overview},
 	year      = {2017},
 	month     = {3},
 	publisher = {The F\# Software Foundation Core Engineering Group}
@@ -252,13 +241,13 @@
 	institution = {University of Cambridge, Computer Laboratory}
 }
 
-@article{boquist1999code,
-	title   = {Code optimization techniques for lazy functional languages},
-	author  = {Boquist, Urban},
-	journal = {Doktorsavhandlingar vid Chalmers Tekniska Hogskola},
-	number  = {1495},
-	pages   = {1--331},
-	year    = {1999}
+@phdthesis{boquist1999code,
+    author  = {Boquist, Urban},
+    title   = {Code optimization techniques for lazy functional languages},
+    school  = {Chalmers University of Technology},
+    address = {Sweden},
+    year    = {1999},
+    month   = {April},
 }
 
 @techreport{corbyn:practical-static-memory-management,
@@ -382,24 +371,28 @@
   publisher={MIT press}
 }
 
-@inproceedings{bernardy2018linear,
+@article{bernardy2018linear,
     author = {Bernardy, Jean-Philippe and Boespflug, Mathieu and Newton, Ryan R. and Peyton Jones, Simon and Spiwack, Arnaud},
     title = {Linear Haskell: practical linearity in a higher-order polymorphic language},
-    booktitle = {Principles of Programming Languages 2018 (POPL 2018)},
-    year = {2018},
-    month = {January},
-    publisher = {ACM},
+    year = {2017},
+    issue_date = {January 2018},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    volume = {2},
+    number = {POPL},
+    journal = {Proc. ACM Program. Lang.},
+    month = {dec},
+    articleno = {5},
+    numpages = {29}
 }
 
-@inproceedings{wadler1990linear,
-  title={Linear types can change the world!},
-  author={Wadler, Philip},
-  booktitle={Programming concepts and methods},
-  volume={3},
-  number={4},
-  pages={5},
-  year={1990},
-  organization={Citeseer}
+@article{wadler1990linear,
+    title   = {Linear types can change the world},
+    author  = {Philip Wadler},
+    issn    = {1479-683X},
+    issue   = {April},
+    journal = {Ifip Tc},
+    year    = {1990},
 }
 
 @article{wadler1991there,
@@ -484,4 +477,39 @@
   pages={55--72},
   year={2003},
   organization={Springer}
+}
+
+@book{sebesta2004concepts,
+  title={Concepts of programming languages},
+  author={Sebesta, Robert W},
+  year={2004},
+  publisher={Pearson Education India}
+}
+
+@inproceedings{jones1993glasgow,
+  title={The Glasgow Haskell compiler: a technical overview},
+  author={Jones, SL Peyton and Hall, Cordy and Hammond, Kevin and Partain, Will and Wadler, Philip},
+  booktitle={Proc. UK Joint Framework for Information Technology (JFIT) Technical Conference},
+  volume={93},
+  year={1993}
+}
+
+@book{brown2012architecture,
+  title={The Architecture of Open Source Applications, Volume II},
+  author={Brown, A. and Wilson, G.},
+  isbn={9781105571817},
+  series={The Achrictecture of Open Source Applications},
+  year={2012},
+  publisher={CreativeCommons}
+}
+
+@article{lafont1988linear,
+  title={The linear abstract machine},
+  author={Lafont, Yves},
+  journal={Theoretical computer science},
+  volume={59},
+  number={1-2},
+  pages={157--180},
+  year={1988},
+  publisher={Elsevier Science Publishers Ltd. Essex, UK}
 }

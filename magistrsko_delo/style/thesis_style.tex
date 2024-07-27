@@ -250,4 +250,11 @@
 	\fi
 }
 
-
+\newcommand{\infers}[4][]{
+	\frac{#2}{#3 \enspace \leadsto \enspace #4}
+	\if\relax\detokenize{#1}\relax
+	\notag
+	\else
+	\tag{\textsc{#1}}
+	\fi
+}

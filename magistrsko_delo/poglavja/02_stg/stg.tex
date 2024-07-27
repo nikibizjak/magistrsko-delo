@@ -2,12 +2,14 @@
 \label{ch:stg}
 
 % Uvod: Imperativni vs funkcijski programski jeziki
-Glede na paradigmo delimo programske jezike na imperativne in deklarativne. Imperativni jeziki, kot so npr. C, Rust, Python, \dots, iz vhodnih podatkov izračunajo rezultat s pomočjo stavkov, ki spreminjajo notranje stanje programa. Ukazi oziroma stavki podrobno opisujejo kako naj se program izvaja, in jih je zato nekoliko lažje prevesti v strojne ukaze, ki jih zna izvajati procesor. Pri deklarativnem programiranju pa je program podan kot višjenivojski opis želenega rezultata, ki ne opisuje dejanskega poteka programa. Med deklarativne jezike štejemo npr. SQL, katerega program je opis podatkov, ki jih želimo pridobiti in kako jih želimo manipulirati, ne da bi podrobno opisovali kako naj sistem izvede te operacije.
+Glede na paradigmo delimo programske jezike na imperativne in deklarativne. Imperativni jeziki, kot so npr. C, Rust, Python, \dots, iz vhodnih podatkov izračunajo rezultat s pomočjo stavkov, ki spreminjajo notranje stanje programa oziroma stroja na katerem se izvajajo. Ukazi zelo podrobno opisujejo samo izvajanje programa, in jih je zato nekoliko lažje prevesti v strojne ukaze, ki jih zna izvajati procesor. Pri deklarativnem programiranju pa je program podan kot višjenivojski opis želenega rezultata, ki ne opisuje dejanskega poteka programa. Med deklarativne jezike štejemo npr. SQL, katerega program je opis podatkov, ki jih želimo pridobiti in kako jih želimo manipulirati, ne da bi podrobno opisovali kako naj sistem izvede te operacije.
 
 % Funkcijski programski jeziki
-Med deklarativne programske jezike pa spadajo tudi funkcijski. Ti za osnovno operacijo nad podatki smatrajo čisto (angl. pure) funkcijo, tj. funkcijo, ki za izračun svoje vrednosti uporablja le vrednosti svojih argumentov, ne pa tudi drugega globalnega stanja. Prednost čistih funkcij je, da bodo enaki vhodi vedno vračali enake izhode, kar omogoča optimizacijo programa s pomočjo memoizacije. Osnovni primitiv je v takih jezikih funkcija, kar pomeni, da jih je mogoče prirediti v spremenljivke, jih uporabiti kot argumente in rezultate drugih funkcij. Čist funkcijski program lahko tako opišemo kot kompozicijo čistih funkcij, ki vhod preslikajo v izhod. Taki jeziki pogosto omogočajo in celo spodbujajo tvorjenje novih funkcij z uporabo curryjinga oziroma delne aplikacije~\cite{10.1145/72551.72554}, pri kateri je funkciji podanih le del njenih argumentov.
+Med deklarativne programske jezike pa spadajo tudi funkcijski, pri katerih je glavna operacija nad podatki ravno funkcija. Funkcijski programi so sestavljeni iz zaporedja aplikacij (angl. application) in kompozicij funkcij. V modernejših funkcijskih programskih jezikih, so funkcije višjenivojske (angl. higher order)~\cite{hudak1989conception}, kar pomeni, da jih je mogoče prirediti v spremenljivke, jih uporabiti kot argumente in kot rezultate drugih funkcij, ter da omogočajo rekurzijo in polimorfizem. Prav tako taki jeziki pogosto omogočajo in celo spodbujajo tvorjenje novih funkcij z uporabo curryjinga oziroma delne aplikacije~\cite{hudak1989conception}, pri kateri je funkciji podanih le del njenih argumentov.
 
-Poleg čistih funkcij je ena izmed ključnih značilnosti nekaterih funkcijskih jezikov tudi leni izračun (angl. lazy evaluation). Leni izračun je strategija računanja vrednosti izrazov, pri kateri se vrednost izraza ne izračuna takoj, ko je definiran, ampak šele, ko je njegova vrednost dejansko potrebna. Ta pristop je tesno povezan z deklarativno naravo funkcijskega programiranja in omogoča pisanje bolj modularne in učinkovite kode.
+Čisti funkcijski programski jeziki spodbujajo uporabo čistih funkcij (angl. pure functions)~\cite{hudak1989conception}. Te za izračun vrednosti rezultata uporabljajo le vrednosti svojih argumentov, ne pa tudi drugega globalnega stanja in ne povzročajo stranskih učinkov (angl. side effects). Med take jezike spada npr. Haskell, pri katerem program opišemo kot kompozicijo čistih funkcij, ki vhod preslikajo v izhod. Vhodno-izhodne operacije so potisnjene na rob samega računanja, saj povzročajo stranske učinke, ki pa so v jeziku neželene. Stranski učinki so v jeziku predstavljeni eksplicitno z uporabo monad. 
+
+Ena izmed ključnih značilnosti nakaterih funkcijskih programskih jezikov je tudi leni izračun (angl. lazy evaluation). Leni izračun je strategija računanja vrednosti izrazov, pri kateri se vrednost izraza ne izračuna takoj, ko je ta definiran, ampak šele, ko je njegova vrednost dejansko potrebna. Večina imperativnih programskih jezikov danes temelji na ne\-u\-ča\-ka\-nem iz\-ra\-ču\-nu~\cite{peyton1987implementation}. Ta je na nek način komplementaren lenemu izračunu, saj se vrednosti izrazov izračunajo takoj, ko se v programu pojavijo. Pri tem lahko izračun argumenta povzroči stranske učinke, katerih vrstni red in čas izvedbe sta ključna za nadaljnjo delovanje programa, zato večina imperativnih jezikov uporablja neučakani izračun~\cite{peyton1987implementation}. Funkcijski programski jeziki kot so npr. Scheme, ML ali OCaml, omogočajo uporabo stranskih učinkov, in prav tako uporabljajo neučakani izračun.
 
 V poglavju se bomo podrobneje posvetili \textit{lenim} funkcijskim jezikom, podrobneje bomo definirali leni izračun, ter predstavili Haskell, jezik, ki temelji na čistih funkcijah in lenosti. Podrobneje bomo opisali potek prevajanja jezika v vmesni jezik imenovan STG in opisali delovanje abstraktnega STG stroja, ki ga zna izvajati.
 
@@ -32,7 +34,7 @@ konjunkcija p q =
 Kot primer si oglejmo razliko pri evalvaciji izraza izraza \texttt{konjunkcija False ((1 / 0) == 0)}. Jeziki, ki temeljijo na strogi semantiki ob klicu funkcije najprej izračunajo vrednosti argumentov. Ker pride pri izračunu drugega argumenta do napake, se izvajanje programa tukaj ustavi. Pri jezikih z nestrogo semantiko pa se ob klicu funkcije ne izračunajo vrednosti argumentov, temveč se računanje izvede šele takrat, ko je vrednost dejansko potrebovana. Ker je prvi argument pri klicu funkcije \texttt{False}, funkcija drugega argumenta ne izračuna in tako je rezultat klica vrednost \texttt{False}.
 
 % Formalizacija stroge in nestroge semantike
-Če semantika jezika dopušča izračun vrednosti izraza, kljub temu, da njegovi podizrazi nimajo vrednosti, jo imenujemo za strogo semantiko. Bolj formalno lahko uvedemo vrednost $\bot$, ki jo imenujemo tudi dno (angl. bottom) in predstavlja vrednosti izrazov, katerim ni mogoče izračunati normalne oblike. Če izraza \textit{expr} ne moremo evalvirati, lahko tako zapišemo kar $\textbf{eval}(expr) = \bot$. Za funkcijo enega argumenta pravimo, da je \textit{stroga}, če velja naslednji pogoj.
+Če semantika jezika dopušča izračun vrednosti izraza, kljub temu, da njegovi podizrazi nimajo vrednosti, jo imenujemo za strogo semantiko~\cite{peyton1987implementation}. Bolj formalno lahko uvedemo vrednost $\bot$, ki jo imenujemo tudi dno (angl. bottom) in predstavlja vrednosti izrazov, katerim ni mogoče izračunati normalne oblike. Če izraza \textit{expr} ne moremo evalvirati, lahko tako zapišemo kar $\textbf{eval}(expr) = \bot$. Za funkcijo enega argumenta pravimo, da je \textit{stroga}, če velja naslednji pogoj.
 
 $$ f \: \bot = \bot $$
 
@@ -41,17 +43,17 @@ Za stroge funkcije torej velja, da če se argument ne bo izračunal, se tudi rez
 % Neučakan izračun
 
 % Prednosti in slabosti
-Ena izmed slabosti neučakanega izračuna je v tem, da klicana funkcija morebiti argumenta sploh ne potrebuje, kar pomeni, da se je ob klicu funkcije vrednost argumenta izračunala brez potrebe. Prednost neučakanega izračuna pa je v tem, da je izvajanje bolj predvidljivo, saj za razliko od lenega izračuna natančno vemo kdaj se bodo argumenti evalvirali. Prednost lenega izračuna pa leži v tem, da so argumenti evalvirani \textit{največ enkrat}. Če namreč argument v telesu funkcije ni nikoli uporabljen, potem tudi ne bo nikoli izračunan. Če pa je uporabljen, bo njegova vrednost izračunana \textit{enkrat} in memozirana v vseh preostalih uporabah. Slabost lenega izračuna pa je v tem, da ga je težje implementirati in da se navadno izvaja počasneje od jezikov z neučakanim izračunom.
+Ena izmed slabosti neučakanega izračuna je v tem, da klicana funkcija morebiti argumenta sploh ne potrebuje, kar pomeni, da se je ob klicu funkcije vrednost argumenta izračunala brez potrebe. Prednost neučakanega izračuna pa je v tem, da je izvajanje bolj predvidljivo, saj za razliko od lenega izračuna natančno vemo kdaj se bodo argumenti izračunali~\cite{peyton1987implementation}. Prednost lenega izračuna pa leži v tem, da so argumenti izračunani \textit{največ enkrat}. Če namreč argument v telesu funkcije ni nikoli uporabljen, potem tudi ne bo nikoli izračunan. Če pa je uporabljen, bo njegova vrednost izračunana \textit{enkrat} in memozirana v vseh preostalih uporabah. Slabost lenega izračuna pa je v tem, da ga je težje implementirati in da se navadno izvaja počasneje od jezikov z neučakanim izračunom~\cite{peyton1987implementation, sebesta2004concepts}.
 
 % TODO: Reduction order - normal vs leftmost outmost
 
 \subsubsection{Redukcija grafa}
 
 % Razlika med imperativnimi in funkcijskimi jeziki - izvajanje
-Zgodnejši programski jeziki so bili namenjeni neposrednemu upravljanju ra\-ču\-nal\-ni\-ka in so kot taki precej odražali delovanje računalniške arhitekture na kateri so se izvajali~\cite{10.1145/72551.72554}. Funkcijski programski jeziki omogočajo večji nivo abstrakcije, so bolj podobni matematični notaciji in posledično tudi bolj primerni za dokazovanje pravilnosti programov. Višji nivo abstrakcije pa pomeni, da jih je težje prevajati oziroma izvajati na današnji računalniški arhitekturi. Ena izmed ovir pri implementaciji lenega izračuna je učinkovito upravljanje z odloženimi izrazi (angl. thunks) in zagotavljanje, da se ti izrazi izračunajo le, ko so resnično potrebni.
+Zgodnejši programski jeziki so bili namenjeni neposrednemu upravljanju ra\-ču\-nal\-ni\-ka in so kot taki precej odražali delovanje računalniške arhitekture na kateri so se izvajali~\cite{hudak1989conception}. Funkcijski programski jeziki omogočajo večji nivo abstrakcije, so bolj podobni matematični notaciji in posledično tudi bolj primerni za dokazovanje pravilnosti programov. Višji nivo abstrakcije pa pomeni, da jih je težje prevajati oziroma izvajati na današnji računalniški arhitekturi. Ena izmed ovir pri implementaciji lenega izračuna je učinkovito upravljanje z odloženimi izrazi (angl. thunks) in zagotavljanje, da se ti izrazi izračunajo le, ko so resnično potrebni.
 
 % Kako implementiramo leni izračun?
-Leni izračun najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{peyton1987implementation, 10.1145/72551.72554}. Pri tej metodi prevajalnik na pomnilniku najprej sestavi abstraktno sintaksno drevo programa, kjer vozlišča predstavljajo aplikacije funkcij oziroma operacije nad podatki, njihova podvozlišča pa odvisnosti med njimi. V procesu \textit{redukcije}, se sintaksno drevo obdeluje z lokalnimi transformacijami, ki ga predelujejo, dokler ni dosežena končna oblika, tj. dokler ni izračunan rezultat programa. Pri tem se sintaksno drevo zaradi deljenja izrazov (angl. expression sharing) navadno spremeni v usmerjen graf.
+Leni izračun najpogosteje implementiramo s pomočjo redukcije gra\-fa~\cite{hudak1989conception, peyton1987implementation}. Pri tej metodi prevajalnik na pomnilniku najprej sestavi abstraktno sintaksno drevo programa, kjer vozlišča predstavljajo aplikacije funkcij oziroma operacije nad podatki, njihova podvozlišča pa odvisnosti med njimi. V procesu \textit{redukcije}, se sintaksno drevo obdeluje z lokalnimi transformacijami, ki ga predelujejo, dokler ni dosežena končna oblika, tj. dokler ni izračunan rezultat programa. Pri tem se sintaksno drevo zaradi deljenja izrazov (angl. expression sharing) navadno spremeni v usmerjen graf.
 
 Slika \ref{fig:redukcija-aplikacije-pred} prikazuje abstraktno sintaksno drevo izraza $(\lambda x \, . \, \textsc{not} \; x) \; \text{True}$. Aplikacija funkcij je predstavljena z vozliščem @, ki vsebuje dva podizraza: funkcijo, ki se bo izvedla in njen argument. V tem primeru je funkcija anonimni lambda izraz $(\lambda x \, . \, \textsc{not} \; x)$, ki sprejme en argument. Pri redukciji, se vse uporabe parametra $x$ zamenjajo z vrednostjo argumenta \texttt{True}. Slika \ref{fig:redukcija-aplikacije-po} prikazuje drevo po redukciji. Ker se je v funkciji argument $x$ pojavil le enkrat, je rezultat redukcije še vedno drevo.
 
@@ -255,7 +257,7 @@ V nadaljevanju se bomo osredotočili na delovanje prevajalnika GHC (angl. Glasgo
 \section{Prevajalnik GHC}
 \label{sec:prevajalnik-ghc}
 
-Prevajalnik GHC prevajanje iz izvorne kode v programskem jeziku Haskell v strojno kodo izvaja v več zaporednih fazah oziroma modulih. Vsaka faza kot vhod prejme izhod prejšnje, nad njim izvede določeno transformacijo in rezultat posreduje naslednji fazi. Faze glede na njihovo funkcijo v grobem delimo na tri dele. V prednjem delu (angl. front-end) se nad izvorno kodo najprej izvede leksikalna analiza, pri kateri se iz toka znakov, ki predstavljajo vhodni program pridobi abstraktno sintaksno drevo (angl. abstract syntax tree). Nad drevesom se izvede še zaporedje semantičnih analiz pri katerih se preveri ali je program pomensko pravilen. Sem sodi razreševanje imen, pri kateri se razreši vsa imena spremenljivk iz uvoženih modulov v programu in preveri ali so vse spremenljivke deklarirane pred njihovo uporabo. Izvede se še preverjanje tipov, kjer se za vsak izraz izpelje njegov najbolj splošen tip in preveri ali se vsi tipi v programu ujemajo.
+Prevajalnik GHC prevajanje iz izvorne kode v programskem jeziku Haskell v strojno kodo izvaja v več zaporednih fazah oziroma modulih~\cite{jones1993glasgow, brown2012architecture}. Vsaka faza kot vhod prejme izhod prejšnje, nad njim izvede določeno transformacijo in rezultat posreduje naslednji fazi. Faze glede na njihovo funkcijo v grobem delimo na tri dele. V prednjem delu (angl. front-end) se nad izvorno kodo najprej izvede leksikalna analiza, pri kateri se iz toka znakov, ki predstavljajo vhodni program pridobi abstraktno sintaksno drevo (angl. abstract syntax tree). Nad drevesom se izvede še zaporedje semantičnih analiz pri katerih se preveri ali je program pomensko pravilen. Sem sodi razreševanje imen, pri kateri se razreši vsa imena spremenljivk iz uvoženih modulov v programu in preveri ali so vse spremenljivke deklarirane pred njihovo uporabo. Izvede se še preverjanje tipov, kjer se za vsak izraz izpelje njegov najbolj splošen tip in preveri ali se vsi tipi v programu ujemajo.
 
 \begin{figure}[h]
 	\centering
@@ -434,6 +436,7 @@ Objekt \textsc{thunk} predstavlja zakasnitev izraza $e$. Kadar se vrednost izraz
 Program v jeziku STG je zaporedje vezav, ki priredijo STG objekte v spremenljivke.
 
 \subsection{Operacijska semantika}
+\label{sec:operacijska-semantika}
 
 Operacijska semantika malih korakov bo opisana s pravili podanimi v obliki, ki jo prikazuje enačba \ref{eq:operacijska-semantika-oblika-pravil}. Pri tem z $e$ označujemo izraze (iz poglavja \ref{sec:stg-definicija}), oznaka $s$ predstavlja sklad kontinuacij, $H$ pa kopico.
 
@@ -458,7 +461,7 @@ Omenimo še, da je pri pravilih operacijske semantike vrstni red pomemben, saj s
 
 \subsubsection{Dodeljevanje novih objektov na pomnilniku}
 
-Pravilo \textsc{let} poda operacijsko semantiko \texttt{let} izraza. Ta na kopici ustvari nov objekt $obj$ in ga priredi novi unikatni spremenljivki $x'$, ki ni uporabljena nikjer v programu, kar ustreza alokaciji še neuporabljenega naslova na kopici. Zapis $e[x' / x]$ predstavlja izraz $e$, v katerem so vse proste spremenljivke $x$ zamenjane z vrednostjo $x'$. Pri \texttt{let} izrazu se torej najprej alocira nov objekt na pomnilniku, nato pa se izvede telo, v katerem so vse pojavitve spremenljivke $x$ zamenjane z novim pomnilniškim naslovom.
+Pravilo \ref{eq:stg-let} poda operacijsko semantiko \texttt{let} izraza. Ta na kopici ustvari nov objekt $obj$ in ga priredi novi unikatni spremenljivki $x'$, ki ni uporabljena nikjer v programu, kar ustreza alokaciji še neuporabljenega naslova na kopici. Zapis $e[x' / x]$ predstavlja izraz $e$, v katerem so vse proste spremenljivke $x$ zamenjane z vrednostjo $x'$. Pri \texttt{let} izrazu se torej najprej alocira nov objekt na pomnilniku, nato pa se izvede telo, v katerem so vse pojavitve spremenljivke $x$ zamenjane z novim pomnilniškim naslovom.
 
 \begin{equation}
 \infer[let]{
@@ -468,13 +471,14 @@ Pravilo \textsc{let} poda operacijsko semantiko \texttt{let} izraza. Ta na kopic
 }{
 	e[x'/x]; \, s; \, H
 }
+\label{eq:stg-let}
 \end{equation}
 
 V pravi implementaciji je substitucija $e[x'/x]$ implementirana kot prepisovanje spremenljivke $x$ s kazalcem na objekt $x'$ v klicnem zapisu funkcije.
 
 \subsubsection{Pogojna izbira s stavkom \texttt{case}}
 
-V primeru, da je izraz, ki ga računamo v \texttt{case} izrazu (angl. scrutinee) pomnilniški naslov, ki kaže na konstruktor $C$, potem se izvede telo veje s konstruktorjem $C$, pri katerem se vrednosti parametrov $x_1, \dots x_n$ zamenjajo z argumenti $a_1, \dots, a_n$ (pravilo \textsc{casecon}).
+V primeru, da je izraz, ki ga računamo v \texttt{case} izrazu (angl. scrutinee) pomnilniški naslov, ki kaže na konstruktor $C$, potem se izvede telo veje s konstruktorjem $C$, pri katerem se vrednosti parametrov $x_1, \dots x_n$ zamenjajo z argumenti $a_1, \dots, a_n$ (pravilo \ref{eq:stg-casecon}).
 
 \begin{equation}
 	\linfer[casecon]{}{
@@ -482,9 +486,10 @@ V primeru, da je izraz, ki ga računamo v \texttt{case} izrazu (angl. scrutinee)
 	}{
 		e[a_1 / x_1 \dots a_n / x_n]; \, s; \, H
 	}
+\label{eq:stg-casecon}
 \end{equation}
 
-Če se noben izmed konstruktorjev v algebraičnih alternativah ne ujema s konstruktorjem na naslovu $v$, ali če je $v$ literal, potem se izvede privzeta alternativa (pravilo \textsc{caseany}). Pri tem se v telesu alternative parameter $x$ zamenja z $v$. V STG jeziku so vrednosti objekti \textsc{fun}, \textsc{pap} in \textsc{con}.
+Če se noben izmed konstruktorjev v algebraičnih alternativah ne ujema s konstruktorjem na naslovu $v$, ali če je $v$ literal, potem se izvede privzeta alternativa (pravilo \ref{eq:stg-caseany}). Pri tem se v telesu alternative parameter $x$ zamenja z $v$. V STG jeziku so vrednosti objekti \textsc{fun}, \textsc{pap} in \textsc{con}.
 
 \begin{equation}
 	\infer[caseany]{
@@ -494,9 +499,10 @@ V primeru, da je izraz, ki ga računamo v \texttt{case} izrazu (angl. scrutinee)
 	}{
 		e[v/x]; \, s; \, H
 	}
+ \label{eq:stg-caseany}
 \end{equation}
 
-Pravilo \textsc{case} začne izračun \texttt{case} izraza. Najprej se začne računati izraz $e$, na sklad pa se potisne kontinuacija \texttt{case} izraza, ki se bo izvedlo, ko se bo vrednost $e$ do konca izračunala.
+Pravilo \ref{eq:stg-case} začne izračun \texttt{case} izraza. Najprej se začne računati izraz $e$, na sklad pa se potisne kontinuacija \texttt{case} izraza, ki se bo izvedlo, ko se bo vrednost $e$ do konca izračunala.
 
 \begin{equation}
 	\infer[case]{}{
@@ -504,9 +510,10 @@ Pravilo \textsc{case} začne izračun \texttt{case} izraza. Najprej se začne ra
 	}{
 		e; \, (\texttt{case} \; \bullet \; \texttt{of} \; \{ \dots \}) : s; \, H
 	}
+\label{eq:stg-case}
 \end{equation}
 
-Zadnje pravilo \textsc{ret} se izvede, ko se izraz v \texttt{case} izrazu do konca izračuna v literal ali kazalec na objekt na kopici. Glede na tip objekta na katerega kaže spremenljivka $v$, se bo nato izvedlo eno izmed pravil \textsc{casecon} ali \textsc{caseany}.
+Zadnje pravilo \ref{eq:stg-ret} se izvede, ko se izraz v \texttt{case} izrazu do konca izračuna v literal ali kazalec na objekt na kopici. Glede na tip objekta na katerega kaže spremenljivka $v$, se bo nato izvedlo eno izmed pravil \ref{eq:stg-casecon} ali \ref{eq:stg-caseany}.
 
 \begin{equation}
 	\infer[ret]{
@@ -516,13 +523,14 @@ Zadnje pravilo \textsc{ret} se izvede, ko se izraz v \texttt{case} izrazu do kon
 	}{
 		\texttt{case} \enspace v \enspace \texttt{of} \enspace \{ \dots \}; \, s; \, H
 	}
+\label{eq:stg-ret}
 \end{equation}
 
-Pomembno je še omeniti, da se pri izvajanju nikoli ne brišejo vezave objektov na kopici. V primeru pravila \textsc{casecon}, se tako iz kopice ne izbriše vezava $v \mapsto \textsc{con}(C \, a_1 \dots a_n)$. Brisanje elementov iz kopice je implementirano s pomočjo avtomatičnega čistilca pomnilnika.
+Pomembno je še omeniti, da se pri izvajanju nikoli ne brišejo vezave objektov na kopici. V primeru pravila \ref{eq:stg-casecon}, se tako iz kopice ne izbriše vezava $v \mapsto \textsc{con}(C \, a_1 \dots a_n)$. Brisanje elementov iz kopice je implementirano s pomočjo avtomatičnega čistilca pomnilnika.
 
 \subsubsection{Zakasnitve in njih posodobitve}
 
-Pravili \textsc{thunk} in \textsc{update} sta namenjeni izračunu zakasnitev. Če je trenutni izraz ravno kazalec na zakasnitev, potem se na sklad doda nova kontinuacija oziroma posodobitveni okvir $\textit{Upd} \; t \; \bullet$, ki kaže na spremenljivko $x$, ki se bo po izračunu posodobila. Prav tako se na kopici objekt zamenja z \textsc{blackhole}. Če med izračunom vrednosti izraza $e$ abstraktni stroj ponovno naleti na spremenljivko $x$, lahko predpostavi, da program vsebuje cikel. Ker nobeno izmed pravil operacijske semantike na levi strani ne vsebuje objekta \textsc{blackhole}, se v primeru ciklov tako izračun zaustavi.
+Pravili \ref{eq:stg-thunk} in \ref{eq:stg-update} sta namenjeni izračunu zakasnitev. Če je trenutni izraz ravno kazalec na zakasnitev, potem se na sklad doda nova kontinuacija oziroma posodobitveni okvir $\textit{Upd} \; t \; \bullet$, ki kaže na spremenljivko $x$, ki se bo po izračunu posodobila. Prav tako se na kopici objekt zamenja z \textsc{blackhole}. Če med izračunom vrednosti izraza $e$ abstraktni stroj ponovno naleti na spremenljivko $x$, lahko predpostavi, da program vsebuje cikel. Ker nobeno izmed pravil operacijske semantike na levi strani ne vsebuje objekta \textsc{blackhole}, se v primeru ciklov tako izračun zaustavi.
 
 \begin{equation}	
 \infer[thunk]{}{
@@ -530,9 +538,10 @@ Pravili \textsc{thunk} in \textsc{update} sta namenjeni izračunu zakasnitev. Č
 }{
 	e; \, (\textit{Upd} \; t \; \bullet) : s; \, H[x \mapsto \textsc{blackhole}]
 }
+\label{eq:stg-thunk}
 \end{equation}
 
-Pri pravilu \textsc{update} se izvede posodobitev zakasnitve na kopici, pri čemer se spremenljivko $x$ preusmeri na objekt na katerega kaže spremenljivka $y$.
+Pri pravilu \ref{eq:stg-update} se izvede posodobitev zakasnitve na kopici, pri čemer se spremenljivko $x$ preusmeri na objekt na katerega kaže spremenljivka $y$.
 
 \begin{equation}
 \infer[update]{
@@ -542,13 +551,14 @@ Pri pravilu \textsc{update} se izvede posodobitev zakasnitve na kopici, pri čem
 }{
 	y; \, s; \, H[x \mapsto H[y]
 }
+\label{eq:stg-update}
 \end{equation}
 
 V dejanski implementaciji se pri posodobitvi na pomnilniku prejšnji ob\-je\-kt prepiše s preusmeritvijo. To je objekt, ki je (podobno kot ostali objekti v STG jeziku glede na sliko \ref{fig:shema-stg-objekt}) sestavljen iz kazalca na metapodatke objekta in še enega dodatnega polja - kazalca na drug objekt. To pa tudi pomeni, da morajo imeti vsi objekti na kopici prostora vsaj za 2 kazalca (2 polji), saj bi sicer pri posodobitvi prišlo do prekoračitve kopice oziroma prepisovanja naslednjega objekta.
 
 \subsubsection{Klici funkcij z znano mestnostjo}
 
-Pri pravilu \textsc{knowncall} gre za uporabo funkcije z mestnostjo $n$ nad natanko $n$ argumenti. Izvede se telo funkcije, v katerem so vsi parametri zamenjani z vrednostmi argumentov, sklad in kopica pa ostajata nespremenjena.
+Pri pravilu \ref{eq:stg-knowncall} gre za uporabo funkcije z mestnostjo $n$ nad natanko $n$ argumenti. Izvede se telo funkcije, v katerem so vsi parametri zamenjani z vrednostmi argumentov, sklad in kopica pa ostajata nespremenjena.
 
 \begin{equation}
 	\linfer[knowncall]{}{
@@ -556,9 +566,10 @@ Pri pravilu \textsc{knowncall} gre za uporabo funkcije z mestnostjo $n$ nad nata
 	}{
 		e[a_1 / x_1 \dots a_n / x_n]; \, s; \, H
 	}
+\label{eq:stg-knowncall}
 \end{equation}
 
-Pravilo \textsc{primop} je zelo podobno pravilu \textsc{knowncall}, le da se vrednost primitivne operacije izračuna neposredno v okolju za izvajanje. Ker so primitivne operacije po definiciji v STG jeziku vedno nasičene, zanje niso potrebna nobena dodatna pravila.
+Pravilo \ref{eq:stg-primop} je zelo podobno pravilu \ref{eq:stg-knowncall}, le da se vrednost primitivne operacije izračuna neposredno v okolju za izvajanje. Ker so primitivne operacije po definiciji v STG jeziku vedno nasičene, zanje niso potrebna nobena dodatna pravila.
 
 \begin{equation}
 	\infer[primop]{
@@ -568,13 +579,14 @@ Pravilo \textsc{primop} je zelo podobno pravilu \textsc{knowncall}, le da se vre
 	}{
 		a; \, s; \, H
 	}
+\label{eq:stg-primop}
 \end{equation}
 
-Pri pravilih \textsc{knowncall} in \textsc{primop} gre za aplikacijo funkcije z znano mestnostjo $n$ na natanko $n$ argumentov. Kaj pa če argumentov ni dovolj ali pa jih je preveč? V primeru, da je argumentov premalo, gre za delno aplikacijo funkcije. Če pa je argumentov preveč, je potrebno funkcijo najprej aplicirati na ustrezno število argumentov. Ko se bo aplikacija do konca izvedla, bo rezultat funkcija, ki jo apliciramo na preostanek argumentov.
+Pri pravilih \ref{eq:stg-knowncall} in \ref{eq:stg-primop} gre za aplikacijo funkcije z znano mestnostjo $n$ na natanko $n$ argumentov. Kaj pa če argumentov ni dovolj ali pa jih je preveč? V primeru, da je argumentov premalo, gre za delno aplikacijo funkcije. Če pa je argumentov preveč, je potrebno funkcijo najprej aplicirati na ustrezno število argumentov. Ko se bo aplikacija do konca izvedla, bo rezultat funkcija, ki jo apliciramo na preostanek argumentov.
 
 \subsubsection{Klici funkcij z neznano mestnostjo}
 
-Pravilo \textsc{exact} je zelo podobno pravilu \textsc{knowncall}, le ga gre v tem primeru za funkcijo neznane mestnosti. V tem primeru je število argumentov shranjeno v tabeli metapodatkov objekta \textsc{fun} na kopici, kot bomo videli v poglavju \ref{sec:abstraktni-stg-stroj}.
+Pravilo \ref{eq:stg-exact} je zelo podobno pravilu \ref{eq:stg-knowncall}, le ga gre v tem primeru za funkcijo neznane mestnosti. V tem primeru je število argumentov shranjeno v tabeli metapodatkov objekta \textsc{fun} na kopici, kot bomo videli v poglavju \ref{sec:abstraktni-stg-stroj}.
 
 \begin{equation}
 	\linfer[exact]{}{
@@ -582,9 +594,10 @@ Pravilo \textsc{exact} je zelo podobno pravilu \textsc{knowncall}, le ga gre v t
 	}{
 		e[a_1 / x_1 \dots a_n / x_n]; \, s; \, H
 	}
+\label{eq:stg-exact}
 \end{equation}
 
-Pravili \textsc{callk} in \textsc{pap2} se ukvarjata z aplikacijami funkcij, pri katerih je število argumentov različno od njihove mestnosti. Če je število argumentov $m$ več kot parametrov $n$ (pravilo \textsc{callk}), potem se prvih $n$ argumentov porabi pri aplikaciji funkcije, vrednosti preostalih argumentov $a_{n + 1}, \dots, a_m$ pa se doda na sklad. Ko se aplikacija do konca izračuna, bo rezultat še ena funkcija, ki je uporabljena na preostalih argumentih (pravilo \textsc{retfun}). Če argumentov pri aplikaciji ni dovolj, se na kopici ustvari nov objekt \textsc{pap}, ki predstavlja delno aplikacijo.
+Pravili \ref{eq:stg-callk} in \ref{eq:stg-pap2} se ukvarjata z aplikacijami funkcij, pri katerih je število argumentov različno od njihove mestnosti. Če je število argumentov $m$ več kot parametrov $n$ (pravilo \ref{eq:stg-callk}), potem se prvih $n$ argumentov porabi pri aplikaciji funkcije, vrednosti preostalih argumentov $a_{n + 1}, \dots, a_m$ pa se doda na sklad. Ko se aplikacija do konca izračuna, bo rezultat še ena funkcija, ki je uporabljena na preostalih argumentih (pravilo \ref{eq:stg-retfun}). Če argumentov pri aplikaciji ni dovolj, se na kopici ustvari nov objekt \textsc{pap}, ki predstavlja delno aplikacijo.
 
 \begin{equation}
 	\linfer[callk]{
@@ -594,6 +607,7 @@ Pravili \textsc{callk} in \textsc{pap2} se ukvarjata z aplikacijami funkcij, pri
 	}{
 		e[a_1 / x_1 \dots a_n / x_n]; \, (\bullet \; a_{n + 1} \dots a_m) : s; \, H
 	}
+\label{eq:stg-callk}
 \end{equation}
 \vspace{1em}
 \begin{equation}
@@ -604,9 +618,10 @@ Pravili \textsc{callk} in \textsc{pap2} se ukvarjata z aplikacijami funkcij, pri
 	}{
 		p; \, s; \, H[p \mapsto \textsc{pap}(f \, a_1 \dots a_m)]
 	}
+\label{eq:stg-pap2}
 \end{equation}
 
-Pravilo \textsc{tcall} pokrije možnost, da funkcija še ni izračunana, torej da je zakasnitev. V tem primeru se prične računanje zakasnitve $f$, obenem pa se na sklad doda kontinuacija $(\bullet \; a_1 \dots a_m)$, ki bo sprožila klic funkcije, ko bo vrednost zakasnitve do konca izračunana.
+Pravilo \ref{eq:stg-tcall} pokrije možnost, da funkcija še ni izračunana, torej da je zakasnitev. V tem primeru se prične računanje zakasnitve $f$, obenem pa se na sklad doda kontinuacija $(\bullet \; a_1 \dots a_m)$, ki bo sprožila klic funkcije, ko bo vrednost zakasnitve do konca izračunana.
 
 \begin{equation}
 	\linfer[tcall]{}{
@@ -614,9 +629,10 @@ Pravilo \textsc{tcall} pokrije možnost, da funkcija še ni izračunana, torej d
 	}{
 		f; \, (\bullet \; a_1 \dots a_m) : s; \, H
 	}
+\label{eq:stg-tcall}
 \end{equation}
 
-Pri pravilu \textsc{pcall} gre za uporabo delne aplikacije nad preostankom argumentov. V tem primeru se funkcija $g$ uporabi nad vsemi $m$ argumenti. Ker je $g$ zaradi definicije v poglavju \ref{sec:stg-definicija} zagotovo funkcija, se bo v naslednjem koraku zagotovo zgodilo eno izmed pravil \textsc{exact}, \textsc{callk} ali \textsc{pap2}.
+Pri pravilu \ref{eq:stg-pcall} gre za uporabo delne aplikacije nad preostankom argumentov. V tem primeru se funkcija $g$ uporabi nad vsemi $m$ argumenti. Ker je $g$ zaradi definicije v poglavju \ref{sec:stg-definicija} zagotovo funkcija, se bo v naslednjem koraku zagotovo zgodilo eno izmed pravil \ref{eq:stg-exact}, \ref{eq:stg-callk} ali \ref{eq:stg-pap2}.
 
 \begin{equation}
 	\linfer[pcall]{}{
@@ -624,9 +640,10 @@ Pri pravilu \textsc{pcall} gre za uporabo delne aplikacije nad preostankom argum
 	}{
 		g^\bullet \, a_1 \dots a_n \, a_{n + 1} \dots a_m; \, s; \, H
 	}
+\label{eq:stg-pcall}
 \end{equation}
 
-Zadnje pravilo \textsc{retfun}, ki deluje na podoben način kot pravilo \textsc{ret} pri \texttt{case} izrazih. Kadar se izraz izračuna v kazalec, ki kaže na funkcijo \textsc{fun} ali delno aplikacijo \textsc{pap} in je na skladu kontinuacija z argumenti, se ustrezno izvede aplikacija funkcije nad argumenti.
+Zadnje pravilo \ref{eq:stg-retfun}, ki deluje na podoben način kot pravilo \ref{eq:stg-ret} pri \ref{eq:stg-case} izrazih. Kadar se izraz izračuna v kazalec, ki kaže na funkcijo \textsc{fun} ali delno aplikacijo \textsc{pap} in je na skladu kontinuacija z argumenti, se ustrezno izvede aplikacija funkcije nad argumenti.
 
 \begin{equation}
 	\infer[retfun]{
@@ -636,6 +653,7 @@ Zadnje pravilo \textsc{retfun}, ki deluje na podoben način kot pravilo \textsc{
 	}{
 		f^\bullet \, a_1 \dots a_n; \, s; \, H
 	}
+\label{eq:stg-retfun}
 \end{equation}
 
 V nadaljevanju bomo na kratko opisali delovanje abstraktnega STG stroja in predstavitev objektov na pomnilniku.
