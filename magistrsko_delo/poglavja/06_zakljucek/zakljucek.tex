@@ -93,4 +93,22 @@
 \chapter{Zaključek}
 \label{ch:zakljucek}
 
-Pri magistrskem delu nam je uspelo implementirati izvajalno okolje za STG jezik.
+V sklopu magistrskega dela nam je uspelo implementirati delujoč abstraktni STG stroj. Ugotovitve našega magistrskega dela: \komentar{(alineje je potrebno prepisati v enotno besedilo)}
+
+\begin{itemize}
+    \item V jezik lahko dodamo analizo premikov, s katero zagotovimo, da je vsaka spremenljivka lahko uporabljena največ enkrat. S pomočjo analize v jezik uvedemo lastništvo objektov, ki nam omogoča avtomatično sproščanje pomnilnika.
+    \item Problem takega jezika je, da postane dokaj neuporaben. Vsak objekt (tj. spremenljivka, funkcija, ...) je lahko uporabljen največ enkrat, kar pomeni, da izgubimo možnost deljenja, ki nam omogoča učinkovito implementacijo lenega izračuna.
+    \item Ena izmed možnosti s katero lahko v jezik ponovno uvedemo podvojevanje objektov je globoko kloniranje, s pomočjo katerega se podvoji celotna struktura na kopici. Problem globokega kloniranja je v neučinkovitosti kopiranja velikih objektov, prav tako pa je za pravilno implementacijo potrebno v len jezik ponovno uvesti neučakani izračun, kar za STG jezik ni sprejemljivo.
+    \item Druga možnost temelji na konceptu izposoje iz programskega jezika Rust~\cite{klabnik2023rust} in je bila implementirana v programski jezik Blang~\cite{turk2022len}. Tukaj v jezik dodamo poseben operator, ki omogoča izposojo objektov. Če pride pri premiku do spremembe lastništva in posledično tudi do prenosu odgovornosti za čiščenje pomnilnika, potem se pri izposoji lastništvo ne preda.
+    \item Za implementacijo izposoj je potrebno uvesti (oziroma izračunati) življenjske dobe objektov. Zaradi same lenosti STG jezika pa je življenjske dobe praktično nemogoče izračunati. Že sam vrstni red računanja izrazov je težko predvideti, saj je odvisen od dejanske implementacije funkcij.
+    \item Ena izmed možnih rešitev (za katero nismo prepričani, če bi sploh delovala), je ponovna uvedba oznak tipov (prototipov oziroma angl. type annotations), ki bi jih razširili z življenjskimi dobami, s katerimi bi moral programer označiti funkcije in tako prevajalniku povedati, kakšne so odvisnosti med življenjskimi dobami parametrov in rezultata funkcije.
+    \item Problem takega pristopa je, da je izredno kognitivno naporen za samega programerja in da povzroči uvedbo tipov v STG jezik, kar pa ni v duhu magistrskega dela, saj jezika nismo želeli povsem spremeniti.
+    \item V splošnem uvedba principa lastništva in izposoje na podlagi tiste iz Rusta za lene programske jezike ni izvedljiva oziroma smiselna.
+\end{itemize}
+
+% Zaradi lenosti jezika je izračun življenjskih dob praktično nemogoč, kar pomeni, da Rustov princip čiščenja pomnilnika ne pride v poštev. Ker ne moremo izračunati življenjskih dob, v STG ne moremo implementirati izposoje. Kar se tiče pa samega lastništva iz Rusta, je pa to zelo podobno linearnim oziroma edinstvenim tipom (angl. uniqueness types). Ti so bili v Haskell že implementirani (glej "Linear Haskell: practical linearity in a higher-order polymorphic language"~\cite{bernardy2018linear}). Če v jezik uvedemo le linearne tipe, jezik zelo omejimo in postane dokaj neuporaben. Zato navadno dodamo še nelinearne tipe, zaradi katerih pa:
+
+%\begin{enumerate}
+%    \item jezik ni več povsem len (glej poglavje 3.1.1)
+%    \item v jeziku še vedno potrebujemo avtomatičen čistilec pomnilnika (linearne tipe lahko počistimo brez, nelinearnih pa na žalost ne)
+%\end{enumerate}

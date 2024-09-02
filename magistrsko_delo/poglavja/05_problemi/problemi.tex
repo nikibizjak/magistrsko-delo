@@ -1,0 +1,574 @@
+\chapter[Lastništvo in izposoja v STG]{Težave pri prenosu lastništva in življenjskih dob v STG}
+\label{ch:problemi}
+
+Za potrebe naše magistrske naloge smo pripravili simulator abstraktnega STG stroja\footnote{Dostopen na naslovu \url{https://github.com/nikibizjak/magistrsko-delo}.}, ki zna razčleniti kodo napisano v STG jeziku in jo izvesti. Sintaksa STG jezika temelji na tisti iz originalnega članka~\cite{marlow2004making}, za izračun aplikacije funkcij je uporabljen model izračunaj / uporabi, pri preverjanju pravilnosti implementacije pa smo si pomagali s spletnim simulatorjem STG jezika\footnote{Dostopen na naslovu \url{https://github.com/MrTipson/webstg}.}. Namen našega dela je bil v simulator dodati analizo premikov in izposoj, kot jo poznamo v Rustu. Za osnovo smo vzeli \emph{len} funkcijski programski jezik Blang~\cite{turk2022len}, ki naj bi za upravljanje s pomnilnikom že uporabljal model lastništva in izposoje.
+
+% TODO: Manjka še kaj vsebine (ravno 1 odstavek, da pokrije polovico strani zaradi oblikovanja)
+
+\section{Implementiran prevajalnik}
+Slika \ref{fig:shema-implementacije} prikazuje zamišljeno strukturo našega prevajalnika. Z odebeljeno pisavo so označene faze, ki smo jih v naš prevajalnik uspešno implementirali. Implementacija vhodni program prebere iz datoteke, ter v fazi razčlenjevanja (angl. parsing) sestavi abstraktno sintaksno drevo. Nad drevesom se izvedeta dve vrsti semantične analize:
+
+\begin{itemize}
+    \itemsep 0em
+    \item Pri razreševanju imen (angl. name resolution) prevajalnik preveri, ali so bile vse spremenljivke definirane preden so bile uporabljene, s čemer se zagotovi, da pri izvajanju ne bo prišlo do napak zaradi dostopa do spremenljivk, ki ne obstajajo.
+    \item Pri analizi mestnosti (angl. arity analysis) se pri aplikacijah funkcij $f^k \; a_1 \dots a_n$ za funkcije izračuna njihovo mestnost $k$. Pri sestavljanju abstraktnega sintaksnega drevesa prevajalnik namreč vse aplikacije označi z neznano mestnostjo $f^{\bullet} \; a_1 \dots a_n$. Za funkcije, ki so bile uvedene s pomočjo konstruktorja \textsc{fun}, lahko prevajalnik mestnost določi na podlagi števila parametrov. Za tiste aplikacije funkcij, ki jim mestnosti ni mogoče določiti (npr. funkciji $f$ v izrazu \texttt{apply = FUN(f x -> f x)}), se uporabi neznana mestnost $\bullet$, za izvajanje pa poskrbijo  ustrezna pravila (\textsc{exact}, \textsc{tcall}, $\dots$) operacijske semantike.
+\end{itemize}
+
+Po semantični analizi se začne izvajanje STG programa s pomočjo abstraktnega STG stroja, ki implementira pravila operacijske semantike opisana v poglavju \ref{sec:operacijska-semantika}. Implementacija sestoji iz izraza, ki ga trenutno računamo, sklada, ki hrani nadaljevanja in kopice, na kateri so shranjeni \textit{objekti}, ki jih STG stroj obdeluje (tj. objekti \textsc{thunk}, \textsc{fun}, \textsc{con}, \textsc{pap}, \textsc{blackhole}). Vsak objekt na kopici vsebuje še okolje (angl. environment), ki imena spremenljivk slika v naslove povezanih objektov na kopici. Prevajalnik zna okolja optimizirati tako, da v njih hrani le nujno potrebne spremenljivke, tj. spremenljivke, ki so v telesu objekta proste (angl. free variables).
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}
+		\tikzset{
+			every node/.append style={text width=1.4cm,execute at begin node=\setlength{\baselineskip}{1em},font=\footnotesize},
+			block/.style={draw,rectangle,text width=2cm,align=center,minimum height=1cm,minimum width=2cm},
+		}
+		
+		\node[block] (parser) {\textbf{Razčlen\-jevanje}};
+		
+		\node[coordinate, left=0.5cm of parser.west] (levo-od-parser) {};
+
+        \node[coordinate, right=2.2cm of parser] (center) {};
+		
+		% \node[block,right=1cm of parser] (borrow-checker) {Analiza izposoj};
+        \node[block,below=0.25cm of center] (borrow-checker) {\textbf{Analiza premikov}};
+        \node[block, above=0.5cm of borrow-checker] (arity-analysis) {\textbf{Analiza mestnosti}};
+		\node[block, above=0.5cm of arity-analysis] (name-resolution) {\textbf{Raz\-re\-še\-van\-je imen}};
+		\node[block, below=0.5cm of borrow-checker] (move-checker) {Analiza izposoj};
+		\node[block, right=2.2cm of center] (interpreter) {\textbf{Abstraktni stroj STG'}};
+		
+		\node[coordinate, right=0.5cm of interpreter.east] (desno-od-interpreter) {};
+		
+		% Input arrow
+		\draw[->] (levo-od-parser) -- (parser) node[above, pos=-0.25,align=center] {\scriptsize tok\\znakov};
+		
+		% Output arrow
+		\draw[->] (interpreter) -- (desno-od-interpreter) node[above,pos=1.25,align=center] {\scriptsize rezultat};
+		
+		% Parser -> name resolution arrow
+		\node[coordinate, right=0.3cm of parser.east] (desno-od-parser) {};
+		\node[coordinate] at (desno-od-parser |- name-resolution) (levo-od-name-resolution) {};	
+		\draw[->] (parser) -- (desno-od-parser) -- node[align=center,sloped,anchor=center,above,pos=0.75] {\scriptsize STG} (levo-od-name-resolution) -- (name-resolution);
+		
+		% Move checker -> abstract STG machine arrow
+		\node[coordinate, left=0.3 of interpreter.west] (levo-od-interpreter) {};
+		\node[coordinate] at (move-checker -| levo-od-interpreter) (desno-od-move-checker) {};
+		\draw[->] (move-checker.east) -- (desno-od-move-checker) -- node[align=center,sloped,anchor=center,below,pos=0.25] {\scriptsize STG'} (levo-od-interpreter) -- (interpreter);
+		
+		% 
+		\draw[->] (name-resolution) -- node[pos=0.5,right] {\scriptsize STG} (arity-analysis);
+        \draw[->] (arity-analysis) -- node[pos=0.5,right] {\scriptsize STG} (borrow-checker);
+		\draw[->] (borrow-checker) -- node[pos=0.5,right] {\scriptsize STG'} (move-checker);
+		
+		% Oznake za semantično analizo
+		\node[coordinate, above=0.4 of name-resolution.north] (top) {};
+		\node[coordinate, below=0.4 of move-checker.south] (bottom) {};
+		
+		\node[coordinate, left=0.5 of borrow-checker.west] (semanticna-analiza-levo) {};
+		\node[coordinate, right=0.5 of borrow-checker.east] (semanticna-analiza-desno) {};
+		
+		\node[coordinate] at (semanticna-analiza-levo |- top) (semanticna-analiza-levo-zgoraj) {};
+		\node[coordinate] at (semanticna-analiza-levo |- bottom) (semanticna-analiza-levo-spodaj) {};
+		
+		\node[coordinate] at (semanticna-analiza-desno |- top) (semanticna-analiza-desno-zgoraj) {};
+		\node[coordinate] at (semanticna-analiza-desno |- bottom) (semanticna-analiza-desno-spodaj) {};
+		
+		\draw[-,dashed] (semanticna-analiza-levo-zgoraj) -- (semanticna-analiza-levo-spodaj) -- (semanticna-analiza-desno-spodaj) -- (semanticna-analiza-desno-zgoraj) -- (semanticna-analiza-levo-zgoraj);
+		
+		\path (semanticna-analiza-levo-zgoraj) -- node[above=0.1,align=center,text width=3cm] {Semantična analiza} (semanticna-analiza-desno-zgoraj);
+		
+	\end{tikzpicture}
+	\caption{Predvidena struktura implementiranega prevajalnika}
+	\label{fig:shema-implementacije}
+\end{figure}
+
+\section{Vrstni red izračuna izrazov}
+
+\subsection{Neučakanost jezika Rust}
+
+Programski jezik Rust implementira strogo semantiko, kar pomeni, da se pri klicu funkcije najprej izračunajo vrednosti argumentov, ki so nato ob klicu posredovane v telo funkcije. Prav tako se zaradi neučakanosti pri prirejanju v spremenljivko (tj. izrazu \mintinline{rust}{let lhs = rhs;}), najprej do konca izračuna vrednost desnega dela prirejanja \textit{rhs}. V splošnem velja, da če se stavek $s_1$ v programu pojavi leksikalno pred stavkom $s_2$, potem se bo stavek $s_1$ zagotovo izvedel pred $s_2$~\komentar{\cite{} TODO: Najdi citat}.
+
+V tem poglavju bomo predpostavljali, da se dosegi spremenljivk računajo glede na leksikalen doseg. Kot smo že omenili v poglavju \ref{ch:rust}, zna Rust življenjske dobe računati neleksikalno. To pomeni, da se pri analizi živ\-ljenj\-skih dob izvede še analiza živosti spremenljivk (angl. liveness analysis) s pomočjo katere se lahko življenjske dobe določijo bolj natančno. Posledično imajo lahko spremenljivke krajšo življenjsko dobo kot funkcija, ki jih je ustvarila. V tem poglavju bomo predpostavljali, da je spremenljivka živa od njene uvedbe, do konca bloka v katerem je bila deklarirana, oziroma do prvega (in tudi edinega) premika spremenljivke.
+
+Spodnji primer prikazuje program v Rustu, ki vsebuje tri zaporedne klice funkcij. Zaradi neučakanosti jezika se bodo stavki zagotovo izvajali glede na vrstni red, v katerem so zapisani. Tako se bo klic funkcije \var{mul} zagotovo izvedel pred klicem \var{div}, ta pa se bo zagotovo izvedel pred klicem \var{add}.
+
+\begin{rust-success}
+fn izracunaj() -> i32 {
+    let a = mul(6, 2);
+    let b = div(8, 2);
+    let r = add(b, a);
+    return r;
+}
+\end{rust-success}
+
+% Življenjske dobe.
+
+
+% Če predpostavimo, da se v Rustu življenjske dobe računajo leksikalno.
+Ker je vrstni red operacij natanko določen, je zelo preprosto izračunati tudi življenjske dobe. V zgornjem primeru ima spremenljivka $a$ zagotovo daljšo življenjsko dobo od spremenljivke $b$, saj je bila deklarirana pred uvedbo spremenljivke $b$. Ker bi se spremenljivka $b$ lahko sklicevala na spremenljivko $a$, je potrebno zagotoviti, da spremenljivka $a$ živi vsaj toliko časa kot $b$, kar pomeni da je življenjska doba spremenljivke $a$ večja od $b$.
+
+% Opis kako bi se to izvedlo v lenem izračunu
+\subsection{Lenost jezika STG}
+
+Zgornji program bi v STG jeziku napisali na zelo podoben način. Pri deklaraciji spremenljivke z \texttt{let} izrazom, se na kopici ustvari nov objekt. Ta je lahko konstruktor algebraičnega tipa \object{con}, funkcija \object{fun} ali še neizračunan izraz \object{thunk}. Objekta z delno aplikacijo \object{pap} in črna luknja \object{blackhole} se neposredno v programu nikoli ne moreta pojaviti, temveč ju lahko na kopici ustvari le prevajalnik oziroma izvajalno okolje. V programu še upoštevamo, da vse tri funkcije \var{mul}, \var{div} in \var{add} kot vhodna argumenta sprejmejo uokvirjeni (angl. boxed) vrednosti. Funkcije najprej izračunajo levo vrednost in jo odpakirajo (angl. unbox), nato pa enako storijo še za desno vrednost. Pri klicu funkcij \var{mul}, \var{div} in \var{add} je torej potrebno vrednosti najprej uokviriti (angl. box). V našem programu so \var{six}, \var{two} in \var{eight} globalne spremenljivke, ki vsebujejo uokvirjena cela števila, tj. spremenljivka \var{two} hrani npr. kazalec na objekt \texttt{CON(Integer 2)} na kopici.
+
+\begin{code-box}{haskell}{STG jezik \cmark}
+izracunaj = THUNK(
+    let a = THUNK(mul six two) in
+    let b = THUNK(div eight two) in
+    let r = THUNK(add b a) in
+        r
+)
+\end{code-box}
+
+Pri zgornjem programu se na kopici najprej ustvarijo trije novi objekti z neizračunanimi izrazi \object{thunk}. Po definiciji jezika STG, se objekti ustvarijo v takem zaporedju, kot se v programu pojavijo, a se tukaj, za razliko od Rusta, pri prirejanju še ne izračunajo. Izračun se sproži šele ko se začne evalvacija izraza $r$ v telesu \texttt{let} izraza. Pri tem se začne izračun zakasnitve \texttt{THUNK(add b a)}, ki glede na definicijo funkcije \var{add} najprej evalvira levi, nato pa še desni izraz. Pri neučakanem računu se vrednosti spremenljivk izračunajo v vrstnem redu, kot so bile definirane, tj. $a$, $b$, $r$, medtem ko se pri lenem izračunu vrednosti izračunajo v vrstnem redu $b$, $a$, $r$. Pri jezikih z lenim izračunom, je vrstni red računanja odvisen od samih implementacij funkcij, kar oteži semantične analize v prevajalniku.
+
+Kljub temu, da je program na pogled dokaj preprost, za izračun v našem simulatorju potrebujemo 61 korakov redukcije.
+
+\section{Analiza premikov v STG jeziku}
+\label{sec:analiza-premikov}
+% \section{Uvedba lastništva v STG}
+
+V poglavju \ref{sec:stg-definicija} smo videli, da jezik STG sestoji iz le peščice operacij: atomarne operacije, aplikacij funkcij oziroma primitivnih operacij, izraza \texttt{let}, ki na kopici ustvari nove objekte in izraza \texttt{case}, s katerim se sproži izračun zakasnitve (angl. forcing a thunk) in glede na rezultat izvede eno izmed možnih alternativ.
+
+Pri izrazu \texttt{let} se najprej na kopici ustvari nov objekt, nato pa se izvede še telo izraza. Spodnji primer prikazuje dva zaporedna \texttt{let} izraza, ki ustvarita spremenljivki $a$ in $b$. S pravili izračuna zakasnitev je zagotovljeno, da se bo objekt, na katerega kaže spremenljivka $a$, na kopici ustvaril \emph{pred} objektom, na katerega kaže spremenljivka $b$.
+
+\begin{code-box}{haskell}{STG jezik \cmark}
+main = THUNK(
+    let a = THUNK(...) in -- let1
+    let b = THUNK(...) in -- let2
+        -- body2
+)
+\end{code-box}
+
+Toda, ker je jezik len, je vrstni red računanja vrednosti objektov $a$ in $b$ odvisen od samega izraza v telesu \texttt{body2}. Lahko se zgodi, da sta spremenljivki uporabljeni kot argumenta pri klicu funkcije, ki ju izračuna v poljubnem vrstnem redu (oziroma ju sploh ne), zaradi česar je pri prevajanju skoraj nemogoče predvideti v katerem vrstnem redu se bodo objekti evalvirali.
+
+\subsection{Formalna definicija analize premikov}
+% Ideja: Kaj če lastništvo prenašamo kadar se objekt ustvari?
+Ta lastnost \texttt{let} izraza, nam da idejo za implementacijo analize premikov (angl. move check), ki zna zagotoviti, da na vsak objekt na kopici kaže natanko ena referenca. Pri tem upoštevamo, da se las\-tni\-štvo prenese ob \textit{ustvarjanju} objekta na kopici. Tako analizo lahko izvedemo leksikalno nad abstraktnim sintaksnim drevesom v času prevajanja.
+
+Enačba \ref{eq:analiza-premikov-oblika-pravil} prikazuje obliko pravil analize premikov. Kot lahko vidimo, ta kot vhod sprejme izraz $expr$ in množico trenutno veljavnih spremenljivk $\Delta$. Množica vsebuje vse spremenljivke, do katerih lahko v danem trenutku dostopamo, tj. spremenljivk, ki še niso bile premaknjene. Rezultat analize je nova množica spremenljivk, ki so veljavne po izvajanju izraza $expr$. Če se izraz $expr$ ne ujema z nobenim izmed pravil, prevajalnik vrne napako.
+
+\begin{equation}
+    \Delta; \, expr \leadsto \Delta'
+    \label{eq:analiza-premikov-oblika-pravil}
+\end{equation}
+
+Enačbi \ref{eq:int} in \ref{eq:var} podajata pravili za analizo premikov za atomarne operacije. Pravilo \ref{eq:int} ne spreminja konteksta, saj izraz ne uporabi nobene spremenljivke in tako ne prenese lastništva. Pravilo \ref{eq:var} obravnava primer uporabe spremenljivke, pri katerem pride do prenosa lastništva. Spremenljivka $x$ v nadaljevanju ni več veljavna, zato je odstranjena s konteksta $\Delta$. Pogoj $x \in \Delta$ zagotavlja, da lahko v izrazu dostopamo le do veljavnih spremenljivk. Če spremenljivka ne nastopa kot element množice $\Delta$, se izraz ne ujema z nobenim izmed pravil, zato prevajalnik vrne napako.
+
+% S pomočjo pogoja $x \in \Delta$, je zagotovljeno, da lahko izraz dostopa le do veljavnih spremenljivk, kajti v nasprotnem primeru se izraz ne ujema z nobenim od pravil, zaradi česar prevajalnik vrne napako.
+
+% Pravila za prenašanje lastništva
+\begin{equation}
+\infers[int]{}{
+    \Delta; \, \texttt{n\#}
+}{
+    \Delta
+}
+\label{eq:int}
+\end{equation}
+
+\begin{equation}
+\infers[var]{
+    x \in \Delta
+}{
+    \Delta; \, x
+}{
+	\Delta \setminus \{ x \}
+}
+\label{eq:var}
+\end{equation}
+
+Pravili \ref{eq:app} in \ref{eq:primop} obravnavata aplikacije funkcij oziroma primitivnih operacij. Ker je $f$ spremenljivka, aplikacija prevzame lastništvo nad njo, prav tako pa se vrednosti argumentov premaknejo v samo funkcijo. Pri klicu funkcije namreč parametrom $x_1, \dots, x_n$ implicitno priredimo vrednosti argumentov $a_1, \dots, a_n$ in jih s tem \emph{premaknemo} v telo funkcije. Podobno obravnavamo tudi primitivne operacije, le da pri tem premaknemo le argumente. Pri tem je potrebno poudariti, da s praviloma uvedemo vrstni red obdelave argumentov, ti se namreč v kontekst dodajo oziroma iz njega odstranijo od leve proti desni, ne glede na to ali so v telesu funkcije sploh uporabljeni. Z analizo premikov tako v STG jezik uvedemo vrstni red prenosa argumentov.
+
+% Tako smo v len programski jezik z analizo premikov na nek način dodali vrstni red operacij, kar pa ni najbolj zaželeno.
+
+\begin{equation}
+\infers[app]{
+    f \in \Delta \qquad \Delta_0 \coloneqq \Delta \setminus \{ f \} \qquad \Delta_0; \, a_1 \leadsto \Delta_1 \qquad \dots \qquad \Delta_{n-1}; \, a_n \leadsto \Delta_n
+}{
+    \Delta; \, f^k \, a_1 \dots a_n
+}{
+	\Delta_n
+}
+\label{eq:app}
+\end{equation}
+
+\begin{equation}
+\infers[primop]{
+    \Delta; \, a_1 \leadsto \Delta_1 \qquad \Delta_1; \, a_2 \leadsto \Delta_2 \qquad\dots \qquad \Delta_{n-1}; \, a_n \leadsto \Delta_n
+}{
+    \Delta; \, f^k \, a_1 \dots a_n
+}{
+	\Delta_n
+}
+\label{eq:primop}
+\end{equation}
+
+Enačba \ref{eq:let} podaja pravilo za analizo premikov v \texttt{let} izrazu. Pri tem se najprej na kopici ustvari nov objekt $x$, ki lahko prevzame lastništvo nad spremenljivkami v trenutnem kontekstu. Izraz \texttt{let} ni rekurziven, zato v kontekst $\Delta$ ne dodamo spremenljivke $x$. Nadaljujemo z analizo telesa \texttt{let} izraza, ki lahko premakne vse tiste spremenljivke, ki še niso bile premaknjene v novonastali objekt (tj. ravno spremenljivke v kontekstu $\Delta_1$) in spremenljivko, ki je bila definirana v \texttt{let} izrazu (tj. spremenljivko $x$).
+
+\begin{equation}
+\infers[let]{
+    \Delta; \, \textit{obj} \leadsto \Delta_1
+    \qquad
+    \Delta_1 \cup \{ x \}; \, e \leadsto \Delta_2
+}{
+    \Delta; \, \texttt{let} \enspace x = \textit{obj} \enspace \texttt{in} \enspace e
+}{
+	\Delta_2
+}
+\label{eq:let}
+\end{equation}
+
+Enačba \ref{eq:case} podaja pravilo za analizo premikov \texttt{case} izraza. Pri tem se najprej izvede izraz $e$ (angl. scrutinee), ki lahko prevzame lastništvo nad spremenljivkami v kontekstu $\Delta$. Spremenljivke, ki niso bile premaknjene v izrazu $e$ (tj. spremenljivke v množici $\Delta'$), so lahko premaknjene v telesu \texttt{case} izraza, tj. eni izmed $n$ možnih alternativ. Ker se vedno izvede \emph{natanko ena} izmed alternativ, lahko upoštevamo, da lahko alternative premaknejo iste spremenljivke. V novem kontekstu so torej vse tiste spremenljivke, ki niso bile premaknjene v nobeni izmed alternativ.
+
+\begin{equation}
+\infers[case]{
+    \Delta; \, e \leadsto \Delta' \qquad \Delta'; \, alt_1 \leadsto \Delta_1 \qquad \dots \qquad \Delta'; \, alt_n \leadsto \Delta_n
+}{
+    \Delta; \, \texttt{case} \; e \; \texttt{of} \; \{ alt_1; \dots; alt_n \}
+}{
+	\Delta_1 \cap \dots \cap \Delta_n
+}
+\label{eq:case}
+\end{equation}
+
+V nadaljevanju podamo še pravila za analizo premikov objektov $obj$ in alternativ $alt$. Pri zakasnitvah (pravilo \ref{eq:thunk}) preprosto analiziramo izraz v zakasnitvi. Konstruktorji \textsc{con} prevzamejo lastništvo nad vsemi spremenljivkami, ki se pojavijo kot argumenti (pravilo \ref{eq:con}). Pri funkcijah (pravilo \ref{eq:fun}) pa se uvedejo nove spremenljivke (parametri $x_1, \dots, x_n$), ki jih dodamo v kontekst in nadaljujemo z analizo telesa funkcije.
+
+\begin{equation}
+\infers[thunk]{
+    \Delta; \, e \leadsto \Delta'
+}{
+    \Delta; \, \textsc{thunk}(e)
+}{
+	\Delta'
+}
+\label{eq:thunk}
+\end{equation}
+
+\begin{equation}
+\infers[con]{
+    \Delta_0; \, a_1 \leadsto \Delta_1
+    \qquad
+    \dots
+    \qquad
+    \Delta_{n - 1}; \, a_n \leadsto \Delta_n
+}{
+    \Delta_0; \, \textsc{con}(C \, a_1 \dots a_n)
+}{
+	\Delta_n
+}
+\label{eq:con}
+\end{equation}
+
+\begin{equation}
+\infers[fun]{
+    \Delta \cup \{ x_1, \dots, x_n \}; \, e \leadsto \Delta'
+}{
+    \Delta; \, \textsc{fun}(x_1 \dots x_n \to e)
+}{
+	\Delta'
+}
+\label{eq:fun}
+\end{equation}
+
+Objekta \textsc{pap} in \textsc{blackhole} se nikoli ne pojavita na desni strani izraza za prirejanje. Uporabljena sta za hranjenje stanja sistema in ju kot taka lahko na kopici ustvari samo izvajalno okolje. Ker se analiza premikov izvaja v času prevajanja, tako pravila za \textsc{pap} in \textsc{blackhole} niso potrebna.
+
+\begin{equation}
+\infers[conalt]{
+    \Delta \cup \{ x_1, \dots, x_n \}; \, e \leadsto \Delta'
+}{
+    \Delta; \, C \enspace x_1 \; \dots \; x_n \to e
+}{
+	\Delta'
+}
+\label{eq:conalt}
+\end{equation}
+
+\begin{equation}
+\infers[condef]{
+    \Delta \cup \{ x \}; \, e \leadsto \Delta'
+}{
+    \Delta; \, x \to e
+}{
+	\Delta'
+}
+\label{eq:condef}
+\end{equation}
+
+Pravila za alternative podobno kot pravila \ref{eq:let} in \ref{eq:fun} uvedejo nove spremenljivke, ki jih dodamo v kontekst, nato pa nadaljujemo z analizo premikov izraza $e$ v alternativi.
+
+\subsection{Lastništvo objektov}
+
+S pravili analize premikov je v jeziku zagotovljeno, da je vsaka spremenljivka uporabljena \emph{največ enkrat} (tj. nič ali enkrat), kar ustreza sistemu afinih tipov tipov~\cite{pierce2004advanced}. Če program uspešno prestane analizo lastništva, torej velja, da na vsak objekt na kopici kaže naj\-več en kazalec. V tem poglavju bomo opisali sistem lastništva, ki je uporabljen med samim izvajanjem programa in skrbi za ustrezno čiščenje pomnilnika. Pri sistemu lastništva se z neokvirjenimi (angl. unboxed) vrednostmi ne bomo ukvarjali, ker lahko te navadno spravimo v en register in je posledično njihovo kopiranje zelo preprosto in učinkovito.
+
+Pri sistemu lastništva obravnavamo dva ločena pojma: spremenljivke in objekte. Objekti $obj$ so strukture (oziroma ovojnice) na kopici, ki so bile definirane v poglavju \ref{sec:stg-definicija}. Vsak objekt je lahko ena izmed petih možnosti (\textsc{thunk}, \textsc{fun}, \textsc{con}, \textsc{pap} ali \textsc{blackhole}) in je sestavljen iz kode, ki se izvede ob evalvaciji objekta, in okolja v katerem se hranijo vrednosti prostih spremenljivk. Pri uvedbi sistema lastništva vsak objekt na kopici razširimo še s seznamom kazalcev na objekte, ki si jih le-ta lasti. V programskem jeziku Blang~\cite{turk2022len} je tak  seznam imenovan za \textit{seznam močnih kazalcev}, zato bomo tako terminologijo uporabljali tudi v našem delu. Med izvajanjem kode objekta, lahko pride do prenosa lastništva, pri čemer je potrebno seznam močnih kazalcev dopolniti z novo vrednostjo, oziroma kakšen kazalec odstraniti. Kadar se objekt do konca izračuna (npr. ko se \textsc{thunk} do konca evalvira), se sprosti pomnilnik vseh objektov na katere kažejo močni kazalci. Pri tem pa si tudi objekti na seznamu močnih kazalcev lastijo druge objekte, zaradi česar je potrebno operacijo sproščanja izvajati rekurzivno: vsak objekt na katerega kaže seznam iz močnih kazalcev najprej sprosti pomnilnik vseh objektov, ki si jih lasti, nato pa odstrani še sam sebe. V učinkoviti implementaciji bi vsak objekt poleg kode za izračun, vseboval še kodo za čiščenje pomnilnika, ki bi poskrbela za odstranjevanje vseh vrednosti, ki si jih lasti.
+
+Kadar nek objekt ustvari novo spremenljivko $x$, tj. z \texttt{let} izrazom, se na kopici ustvari nov objekt, njegov naslov pa se shrani v spremenljivko $x$. Ker je objekt spremenljivko ustvaril, je posledično tudi lastnik objekta na katerega spremenljivka kaže, zato se ob prirejanju v spremenljivko, v seznam močnih kazalcev doda še naslov objekta na katerega spremenljivka kaže.
+
+V nadaljevanju bomo neformalno opisali pravila za prenašanje lastništva. Pri tem bomo upoštevali, da vsaka \emph{uporaba} neke spremenljivke preda lastništvo objekta, na katerega spremenljivka kaže nekemu drugemu objektu.
+
+\begin{itemize}
+    \itemsep 0em
+    \item Pri aplikaciji $f^k \: a_1 \dots a_n$ so argumenti atomarni, kar pomeni, da so ali neokvirjene vrednosti, pri katerih se z lastništvom ne ukvarjamo ali pa spremenljivke, ki kažejo na druge objekte na kopici. Lastništvo objektov na katere kažejo argumenti $a_1, \dots, a_n$ se preda objektu na katerega kaže spremenljivka $f$.
+    \item Pri primitivnih operacijah $\oplus \: a_1 \dots a_n$, operator $\oplus$ prevzame lastništvo nad objekti na katere kažejo argumenti $a_1, \dots, a_n$.
+    \item Pri izrazu $\texttt{let} \enspace x = obj \enspace \texttt{in} \enspace e$ se na kopici najprej ustvari objekt $obj$, ki prevzame lastništvo nad vsemi prostimi spremenljivkami, ki se v njem pojavijo. Izraz \texttt{let} uvede novo spremenljivko $x$, pri čemer trenutni objekt prevzame lastništvo nad novo ustvarjenim objektom $obj$. Po prenosu lastništva sledi izračun telesa $e$.
+    \item Pri \texttt{case} izrazu se najprej izračuna vrednost izraza $e$, kar lahko vodi do prenosa lastništva. Rezultat izračuna je naslov $v$ konstruktorja \textsc{con}, ki se ujema z eno izmed alternativ. Če so vsi dosedanji izrazi lastništvo predali, pa ga \texttt{case} izraz prevzame. Trenutnemu objektu, se v seznam lastništva dodajo kazalci na vse objekte, ki si jih objekt $v$ lasti. Objekt na katerega kaže $v$, lahko izbrišemo iz pomnilnika, saj nanj zagotovo kaže le kazalec $v$.
+\end{itemize}
+
+\subsubsection{Sprememba operacijske semantike}
+
+Operacijsko semantiko je potrebno dopolniti s pravili za čiščenje pomnilnika. V nadaljevanju neformalno opišemo nekaj najpomembnejših sprememb operacijske semantike.
+
+\begin{itemize}
+    \itemsep 0em
+    \item Pravilo \ref{eq:stg-update} posodobi objekt \textsc{thunk} na kopici s preusmeritvijo \textsc{indirection}, ki kaže na objekt z rezultatom. Ker je pri tem \textsc{thunk} objekt uničen, lahko pri tem počistimo pomnilnik vseh objektov, ki si jih le-ta lasti.
+    \item Pri pravilu \ref{eq:stg-casecon} trenuten objekt prevzame lastništvo nad vsemi argumenti konstruktorja. Zatem je lahko pomnilnik \textsc{con} objekta spro\-ščen, saj s tem vrednosti argumentov niso izbrisane pred uporabo. 
+    \item Pri pravilu \ref{eq:stg-primop} najprej izračunamo rezultat primitivne operacije, nato pa lahko počistimo pomnilnik vseh objektov, ki so bili uporabljeni za izračun rezultata.
+\end{itemize}
+
+\subsubsection{Primer}
+
+Naslednji program prikazuje zakasnitev $t$, ki ustvari dva nova objekta na kopici in ju priredi spremenljivkama $a$ in $b$. Pri prirejanju v spremenljivko $r$, sta spremenljivki $a$ in $b$ v telesu funkcije \emph{prosti}, kar pomeni, da se lastništvo (in s tem odgovornost za čiščenje pomnilnika) prenese v objekt \textsc{fun}. Po premiku postaneta spremenljivki $a$ in $b$ neveljavni, kar pomeni, da se v telesu zakasnitve ne smeta več pojaviti. Telo najbolj ugnezdenega \texttt{let} izraza iz same zakasnitve $t$ vrne tudi lastništvo nad spremenljivko $r$. To pomeni, da \textsc{thunk} na katerega kaže spremenljivka $t$, ni več odgovoren za čiščenje pomnilnika nobene izmed spremenljivk, ki jih je definiral. Če program vsebuje kakršnokoli prirejanje, kjer se spremenljivka $t$ pojavi na desni strani (angl. right-hand-side), potem objekt v katerem se prirejanje nahaja, prevzame lastništvo nad objektom $\textsc{fun}(f \to f \: a \, b)$.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva \cmark}
+t = THUNK(
+    let a = THUNK(...)      in
+    let b = THUNK(...)      in
+    let r = FUN(f -> f a b) in  -- Premik
+        r
+)
+\end{code-box}
+
+Ena izmed optimizacij, ki jo lahko prevajalnik izvede, da s pomočjo analize prostih spremenljivk prepozna katere izmed spremenljivk, definiranih v nekem objektu (z \texttt{let} izrazom) v nadaljevanju programa niso nikjer več uporabljene. Take definicije lahko prevajalnik iz programa odstrani ter s tem zmanjša količino objektov, ki se ustvarijo oziroma brišejo iz kopice.
+
+\subsubsection{Prednosti in slabosti}
+
+% Prednosti in slabosti jezika, ki vsebuje le premike
+Prednost jezika STG, ki vsebuje le premike (tj. zgolj sistem lastništva) je zmožnost izvajanja avtomatičnega čiščenja pomnilnika brez uporabe tradicionalnega avtomatičnega čistilca pomnilnika. Vsak objekt na kopici dopolnimo s seznamom objektov, ki si jih le-ta lasti (tj. seznamom močnih kazalcev), operacijsko semantiko jezika pa dopolnimo tako, da se ob posodobitvah zakasnitev sprosti pomnilnik za objekte, ki so v seznamu. Kot smo že omenili, v jezik tako uvedemo sistem \emph{afinih} tipov, ki zagotavlja, da na vsak objekt kaže največ ena referenca, oziroma da je lahko vsaka spremenljivka uporabljena \emph{največ enkrat}. Če spremenljivka v nekem objektu ni nikjer uporabljena, potem lahko objekt, na katerega se le-ta sklicuje, izbrišemo s pomnilnika. Če je spremenljivka nekje uporabljena, potem se lastništvo prenese na nek drug objekt, ki postane odgovoren tudi za čiščenje pomnilnika. Z uvedbo sistema afinih tipov, pa v STG vpeljemo tudi omejitve afinega sistema tipov. V takem jeziku lahko vsako spremenljivko (oziroma vsak objekt) uporabimo največ enkrat, kar pomeni, da ne moremo napisati naslednjega programa.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva \xmark}
+main = THUNK(
+    let a = ... in
+    let b = CON(Pair a a) in -- (a, a)
+        ...
+)
+\end{code-box}
+
+Ker STG jezik obravnava funkcije kot prvorazredne objekte, lahko spremenljivke hranijo reference na funkcije. To pa pomeni, da v afinem sistemu izgubimo možnost večkratne uporabe funkcij (tj. v takem jeziku ne smemo napisati izraza \texttt{f (f x)}, ki funkcijo $f$ uporabi dvakrat), prav tako pa nam tak sistem tipov prepoveduje uporabo rekurzije. 
+
+% Možne rešitve:
+%   * slabša: uvedemo izraz clone
+%   * boljša: podobno kot v Rustu, dodamo izposojo
+
+\section{Globoko kloniranje objektov}
+
+Glavna težava, ki se pojavi pri sistemu, ki vsebuje le princip lastništva, je nezmožnost deljenja objektov. Ena izmed možnih rešitev (implementirana tudi v delu \cite{marshall2024functional}) je vpeljava izraza \texttt{clone}, ki zna globoko klonirati (angl. deep clone) objekt na kopici. Pri globokem kopiranju se ustvari nova kopija objekta, vključno z vsemi njegovimi notranjimi strukturami in podatki. To pomeni, da se rekurzivno kopirajo tudi vsi ugnezdeni objekti in podatkovne strukture, ki jih vsebuje izvorni objekt. Rezultat je popolnoma neodvisna kopija originalnega objekta, kjer spremembe na kopiji ne vplivajo na original in obratno.
+
+S pomočjo analize premikov lahko tako za vsak objekt zagotovimo, da na vsak objekt kaže natanko ena referenca, s pomočjo kloniranja pa lahko objekte podvajamo, ne da bi to predpostavko prekršili. Slabost takega pristopa je v tem, da je pri kloniranju velikih oziroma bolj kompleksnih objektov, postopek kloniranja izredno časovno in prostorsko potraten~\cite{wadler1990linear, lafont1988linear}. Do druge težave pride zaradi same lenosti izračuna.
+
+\begin{code-box}{haskell}{STG jezik z globokim kloniranjem \xmark}
+main = THUNK(
+    let a = ... in
+    let b = THUNK(clone a) in
+        (f a) + b
+)
+\end{code-box}
+
+Zgornji primer prikazuje program, ki bi se v neučakanem jeziku izvedel brez težav. Ob prirejanju v spremenljivko \texttt{b}, bi se namreč celoten objekt na kopici, na katerega kaže spremenljivka \texttt{a}, kopiral, kar pomeni, da sta objekta na katera kažeta spremenljivki \texttt{a} in \texttt{b} povsem disjunktna (tj. njuna grafa na pomnilniku si ne delita nobenega vozlišča). Funkcija \texttt{f} prevzame lastništvo nad \texttt{a} in s tem tudi odgovornost za čiščenje pomnilnika. Če se v izrazu \texttt{(f a) + b} torej najprej izvede aplikacija \texttt{f a}, potem se pomnilnik spremenljivke $a$ tudi ustrezno počisti. Toda, spremenljivka $b$ kaže na zakasnitev, ki pa še ni bila izračunana, ta pa vsebuje referenco na sedaj neobstoječo spremenljivko $a$, kar pomeni, da pride pri izvajanju programa do napake.
+
+Če bi želeli, da se program pravilno izračuna, bi torej morali v STG jezik ponovno uvesti neučakanost pri računanju, na podoben način kot je to pri \texttt{let!} izrazu Wadlerjevem jeziku s sistemom \komentar{steadfast} tipov~\cite{wadler1990linear}. Pri tem se desna stran prirejanja izračuna \emph{v celoti}, preden se izvede telo izraza, kar Wadler imenuje za hiperstriktni izračun (angl. hyperstrict evaluation). Ker je leni izračun osnova STG jezika, ta pristop ne pride v poštev.
+
+\section{Izposoja}
+
+% Druga rešitev, s pomočjo katere lahko v programski jezik s sistemom lastništva ponovno uvedemo deljenje izrazov, temelji na Rustovem modelu izposoje. Če lahko pri lastništvu objektov vsako spremenljivko uporabimo le enkrat, nam izposoja omogoča, da je lahko spremenljivka nespremenljivo izposojena (in s tem uporabljena) večkrat, ali pa spremenljivo izposojena enkrat.
+
+% Izposoja - splošno in uporaba v Rust in Blang
+Druga rešitev za ponovno uvedbo deljenja izrazov v programskem jeziku s sistemom lastništva temelji na konceptu izposoje, kot ga poznamo iz programskega jezika Rust. Implementiran sistem lastništva zahteva, da je vsaka spremenljivka uporabljena največ enkrat. Koncept izposoje pa omogoča, da je spremenljivka lahko nespremenljivo izposojena (in s tem uporabljena) večkrat, ali pa spremenljivo izposojena le enkrat. Programski jezik Rust~\cite{klabnik2023rust} uvede koncept življenjskih dob, s pomočjo katerih v fazi analize izposoj zagotovi, da je življenjska doba objekta daljša od življenjske dobe izposoje. Len funkcijski jezik Blang~\cite{turk2022len} na podlagi Rustovega modela lastništva implementira tako analizo premikov, kot tudi analizo izposoj. Jezik (podobno kot npr. Ocaml in Scala) podpira mutacijo in na podlagi principa izključitve v Rustu, tudi spremenljive in nespremenljive izposoje. Podobno kot Rust, tudi Blang definira pojem življenjskih dob, ki jih zmore v določenih primerih prevajalnik izračunati sam, v drugih primerih pa zahteva, da programer življenjske dobe in tipe navede eksplicitno.
+
+\subsubsection{Mutacija v STG jeziku}
+% STG jezik - nimamo spremenljivih izposoj
+Pri STG jeziku lahko nove spremenljivke definiramo s pomočjo \texttt{let} izraza, ki na kopici ustvari nov objekt, v spremenljivko pa se shrani pomnilniški naslov le-tega. Jezik STG ne vsebuje nobenega konstrukta, s pomočjo katerega bi obstoječi spremenljivki priredili drugo vrednost. Pri definiciji spremenljivke z enakim imenom, se prejšnja vrednost ne prepiše, temveč zasenči (angl. shadow). Na kopici se ustvari nov objekt, pri čemer se vse nadaljnje uporabe spremenljivke $x$ sklicujejo na novonastali objekt, pri vseh objektih, ki so nastali prej, pa spremenljivka vsebuje naslov prejšnjega objekta. Jezik STG torej ne omogoča neposredne mutacije vrednosti obstoječih spremenljivk.
+
+Jezik STG učinkovito implementacijo lenega izračuna doseže s pomočjo principa prenosa po potrebi (angl. call by need), pri katerem se vrednost zakasnitve izračuna prvič, ko je potrebovana, nato pa se v pomnilniku objekt zamenja s preusmeritvijo na rezultat. Ob vsaki nadaljnji uporabi, se vrednost enostavno prebere s pomnilnika. Torej so edini vir mutacij v STG jeziku posodobitve zakasnitev (angl. thunk updates). Rust podpira spremenljive in nespremenljive izposoje, ker pa v STG jeziku ni mutacije, se bomo v našem delu ukvarjali le z nespremenljivimi izposojami.
+
+% Edini vir mutacije v STG jeziku so posodobitve zakasnitev (angl. thunk updates), pri katerih se objekt v pomnilniku prepiše s preusmeritvijo (objektom \textsc{indirection}) na rezultat izračuna. \komentar{Kako delujejo posodobitve?}
+
+% Tako so pri STG jeziku edini vir mutacij posodobitve zakasnitev (angl. thunk updates), pri katerih se objekt v pomnilniku prepiše s preusmeritvijo na rezultat izračuna. Ker spremenljivke vsebujejo kazalce na objekte na kopici, to omogoča učinkovito deljenje in ponovno uporabo podatkov brez nepotrebnega kopiranja. Rust podpira spremenljive in nespremenljive izposoje, ker pa v STG jeziku ni mutacije, se bomo v našem delu ukvarjali le z nespremenljivimi izposojami.
+
+% Kaj torej ponazarjajo naše spremenljive in nespremenljive izposoje?
+V poglavju \ref{sec:analiza-premikov} smo definirali analizo premikov pri kateri pride pri uporabi spremenljivke do premika in s tem do prenosa odgovornosti za čiščenje pomnilnika premaknjenega objekta. Pri nespremenljivi izposoji, ki jo bomo označevali z \texttt{\&x}, je omogočen dostop do spremenljivke $x$, pri tem pa se \emph{ne} prenese odgovornost za čiščenje pomnilnika. Podobno kot pri premikih, bomo tudi pri izposojah predpostavljali, da do izposoje pride ob prirejanju in ne ob dejanski uporabi spremenljivke. Naslednji primer prikazuje program, ki najprej na kopici ustvari objekt in ga priredi spremenljivki $a$, nato pa se na kopici ustvarita še dve zakasnitvi, ki si izposodita spremenljivko $a$.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje}
+main = THUNK(
+    let a = ... in
+    let b = THUNK(... &a ...) in -- Izposoja
+    let c = THUNK(... &a ...) in -- Izposoja
+        ...
+)
+\end{code-box}
+
+% Premik - odgovornost za čiščenje pomnilnika
+% Izposoja - zavoljo deljenja vrednosti (učinkovita implementacija)
+Po pravilih lastništva, je zakasnitev \textit{main}, lastnik spremenljivk $a$, $b$ in $c$, kar pomeni, da lahko ob posodobitvi, počisti tudi pomnilnik spremenljivk $a$, $b$ in $c$. Objekta, na katera kažeta spremenljivki $b$ in $c$, si izposojata spremenljivko $a$. Ker je spremenljivka $a$ prosta znotraj zakasnitev, se pojavi v okolju znotraj ovojnice obeh zakasnitev, ker pa je spremenljivka izposojena in ne premaknjena, pa se \emph{ne} pojavi v seznamu močnih kazalcev zakasnitev in tako njen pomnilnik ni počiščen ob posodobitvi zakasnitev.
+
+\subsubsection{Uvedba izposoje v STG}
+
+% atom ::= ... | &x
+Za uvedbo izposoje v jezik STG, je najprej potrebno razširiti semantiko jezika z dodajanjem operacije za izposojo.
+
+\begin{align*}
+	a, v \quad \coloneq& \quad \dots \enspace \vert \enspace \& x & \text{atomarni izrazi}
+\end{align*}
+
+
+% Popravek analize premikov
+V analizo premikov dodamo pravilo \ref{eq:borrow}, ki deluje na podoben način kot pravilo \ref{eq:var}, le da pri tem iz konteksta $\Delta$ ne odstrani spremenljivke, saj pri izposoji vrednost ni premaknjena.
+
+\begin{equation}
+\infers[borrow]{
+    x \in \Delta
+}{
+    \Delta; \, \& x
+}{
+	\Delta
+}
+\label{eq:borrow}
+\end{equation}
+
+Naslednji primer prikazuje program, ki najprej ustvari spremenljivko $a$, nato pa ustvari spremenljivko $b$ in pri tem prenese lastništvo v objekt \textsc{thunk}, na katerega kaže spremenljivka $b$. Pri tem spremenljivka $a$ ni več veljavna in je zato pri analizi premikov odstranjena iz konteksta $\Delta$. Pri analizi objekta na katerega kaže $c$, pride tako do napake, saj se kontekst $\Delta$ in izraz $\&a$ ne ujemata s pravilom \ref{eq:borrow} (ker velja $a \notin \Delta$).
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje \xmark}
+main = THUNK(
+    let a = ... in
+    let b = THUNK(... a ...) in
+    -- Neveljavna izposoja, spremenljivka a je bila že premaknjena
+    let c = THUNK(... &a ...) in 
+        ...
+)
+\end{code-box}
+
+Naslednji primer prikazuje program, ki bi uspešno prestal analizo premikov. Objekt $b$ si namreč spremenljivko $a$ le izposodi in je ne odstrani iz konteksta $\Delta$. Objekt $c$ spremenljivko $a$ dejansko premakne in jo odstrani iz konteksta, pri čemer ta postane neveljavna v telesu \texttt{let} izraza.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje \cmark}
+main = THUNK(
+    let a = ... in
+    let b = THUNK(... &a ...) in
+    -- Neveljaven premik, spremenljivka a je že bila izposojena
+    let c = THUNK(... a ...) in
+        ...
+)
+\end{code-box}
+
+Tak program bi v Rustu javil napako, saj spremenljivka ne sme biti premaknjena, dokler je izposojena (tj. dokler nanjo obstaja živa referenca). V Rustu lahko življenjsko dobo izposoj upravljamo s pomočjo blokov. Nov blok namreč uvede novo življenjsko dobo, spremenljivke definirane znotraj bloka pa so veljavne do konca bloka. Kadar se blok zaključi, se pomnilnik za spremenljivke sprosti, izposoje pa se zaključijo. V naslednjem programu uvedemo spremenljivko $a$ in si jo znotraj bloka izposodimo v spremenljivko $b$. Kadar se blok zaključi, se zaključi tudi izposoja, zato lahko nato izvedemo premik v spremenljivko $c$.  
+
+\begin{rust-success}
+let a = ...;
+{
+    let b = &a;
+}
+let c = a;
+\end{rust-success}
+
+Jezik STG nima koncepta \komentar{blokov (tj. )}. Z izrazom \texttt{let} lahko ustvarimo nove zakasnitve, ki se izračunajo po potrebi, izraz \texttt{case} pa je edini izraz, ki sproži izračun neke zakasnitve (angl. forcing a thunk). \komentar{Je res?} Torej je \texttt{case} izraz tudi edini način, da se izposoja zaključi. Naslednji primer prikazuje zakasnitev, v kateri definiramo spremenljivko \var{a} in si jo izposodimo v spremenljivko \var{b}. Nato sprožimo izračun zakasnitve \var{b} s pomočjo \texttt{case} izraza. Odvisno od izraza v zakasnitvi \object{thunk}, je lahko spremenljivka \var{a} še vedno izposojena (če je bila vrednost \texttt{\&a} uporabljena pri tvorjenju rezultata). Če spremenljivka \var{a} ni več izposojena (tj. ni bila uporabljena pri tvorjenju rezultata zakasnitve), potem jo lahko premaknemo.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje}
+main = THUNK(
+    let a = ... in
+    let b = THUNK(... &a ...) in
+    case b of {
+        x ->
+            -- Premik je veljaven samo, če pri tvorjenju rezultata 'x' ni bila uporabljena vrednost '&a'.
+            let c = THUNK(... a ...) in c
+    }
+)
+\end{code-box}
+
+Na tem mestu se pojavi vprašanje, ali je mogoče izposoje prepoznati med samim prevajanjem programa. 
+
+\subsubsection{Zakaj je nujna uvedba podatkovnih tipov}
+
+V naslednjem primeru funkcija \var{f} ni znana, kar pomeni, da ne vemo, ali bo spremenljivka \var{result} vsebovala referenco na \var{item}. Če bo, potem je program neveljaven, ker se bo po izvajanju funkcije \var{f} počistil pomnilnik spremenljivke \var{item} (ker ni bila premaknjena), rezultat pa bo vseboval referenco na neobstoječo spremenljivko.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje}
+g = FUN(f ->
+    let item = CON(Integer 10) in
+    case f &item of {
+        x ->
+            let result = CON(Just x) in
+                result
+    }
+)
+
+f1 :: &'A a -> 'A (Maybe b)
+f1 = FUN(x ->
+    let result = CON(Nothing) in
+        result
+)
+
+f2 :: &'A a -> &'A a
+f2 = FUN(x -> x)
+\end{code-box}
+
+Pri aplikaciji funkcije \texttt{g f1}, je program povsem veljaven, saj je pomnilnik vseh objektov ustrezno počiščen. V primeru  aplikacije \texttt{g f2}, pa  bo rezultat vseboval referenco na spremenljivko \var{item}, ki pa bo izbrisana po izhodu iz funkcije \var{g}.
+
+Še en primer, ki je veljaven, če je \var{f} funkcija ki kot vhod sprejme dve referenci in vrne nek nov objekt skupaj z lastništvom. Če bi bil rezultat funkcije \var{f} sestavljen z uporabo referenc, bi bil program neveljaven.
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje}
+g :: (Pair (&'A a) (&'B b) -> c) -> c
+g = FUN(f ->
+    let item = CON(Integer 10) in
+    let pair = CON(Pair &item &item) in
+        f pair
+)
+
+-- Veljavna funkcija
+f1 :: (Pair (&'A a) (&'B b) -> Integer) -> Integer
+f1 = FUN(x y -> let r = CON(Integer 10) in r)
+\end{code-box}
+
+Za analizo izposoj, je torej nujno potrebno v jezik STG uvesti podatkovne tipe. V poglavju \ref{ch:rust} smo omenili, da tudi Rust ne zna sam izpeljati življenjskih dob pri funkcijah z več kot enim argumentom. Naša razširitev STG jezika bi podobno kot Rust od programerja zahtevala, da za vsako funkcijo in vsak objekt ustvarjen z \texttt{let} izrazom, napiše še prototip (angl. type annotation).
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje}
+-- Operacija 'add' sprejme dve referenci, ustvari nov objekt z rezulatom in ga vrne (in s tem vrne tudi lastništvo)
+add :: &'A Integer -> &'B Integer -> Integer
+add = FUN(x y -> ...)
+
+main = THUNK(
+    let a = CON(Integer 12) in
+    let b = THUNK(add &a &a) in
+    -- Tukaj ne moremo premakniti 'a', ker je izposojena
+    -- let c = THUNK(a) in
+    case b of {
+        result ->
+            -- Na tem mestu zakasnitev 'main' prevzame lastništvo nad objektom CON(Integer x), ki jo je ustvarila funkcija 'add'.
+            -- Prav tako pa vemo, da je zakasnitev 'b' do konca izračunana in ne vsebuje več referenc na 'a' (tj. izposoja 'a' je zaključena)
+            -- => Tukaj lahko spremenljivko 'a' ponovno premaknemo
+            let d = THUNK(a) in
+                ...
+    }
+\end{code-box}
+
+\begin{code-box}{haskell}{STG jezik s sistemom lastništva in izposoje}
+id :: &'A a -> &'A a
+id = FUN(x -> x)
+
+ignore :: &'A a -> b
+ignore = FUN(x -> let r = CON(Integer 10) in r)
+
+main = THUNK(
+    let a = CON(Integer 12) in
+    let b = THUNK(id &a) in -- Se še ne izračuna
+    let c = CON(Just b) in
+    case c of {
+        -- Izraz case izračuna do konca zakasnitve, konstruktorje CON pa spravi v a normalno obliko.
+        Just value ->
+            -- Tukaj ne smemo premakniti spremenljivke 'a', ker je izposoja še vedno aktivna. Dokler se namreč ne izračuna vrednost argumenta (Just value), ta vsebuje kazalec na spremenljivko 'a'.
+            case (ignore value) of {
+                result ->
+                    -- Na tem mestu izposoja ni več veljavna, spet lahko premaknemo spremenljivko 'a'.
+                    let d = THUNK(a) in
+                        ...
+            }
+    }
+\end{code-box}

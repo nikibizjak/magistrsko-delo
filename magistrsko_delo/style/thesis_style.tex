@@ -220,7 +220,7 @@
 \newcommand{\titlefont}{\LARGE\bf}
 % SLO: globina kazala
 % ENG: content depth
-\setcounter{tocdepth}{2}
+\setcounter{tocdepth}{1}
 % SLO: definiraj ukaz za prazno stran
 % ENG: define the command for empty page
 \newcommand{\clearemptydoublepage}{\newpage{\pagestyle{empty}\cleardoublepage}}
@@ -258,3 +258,8 @@
 	\tag{\textsc{#1}}
 	\fi
 }
+
+\newcommand{\var}[1]{\textit{#1}}
+\newcommand{\object}[1]{\textsc{\MakeLowercase{#1}}}
+% \newcommand{\let}[0]{\texttt{let}}
+\newcommand{\case}{\texttt{case}}
