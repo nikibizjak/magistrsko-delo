@@ -1,0 +1,49 @@
+main = THUNK(
+	let a = THUNK(mul six two) in
+	let b = THUNK(div eight two) in
+	let r = THUNK(add b a) in
+		r
+)
+
+-- Uokvirjene celoštevilske vrednosti
+six = CON(Integer 6)
+two = CON(Integer 2)
+eight = CON(Integer 8)
+
+-- Aritmetične operacije
+-- Najprej razpakirajo obe celoštevilski vrednosti in nad njima izvedejo ustrezno primitivno operacijo (+#, *# ali /#)
+add = FUN(x y ->
+	case x of {
+		Integer i -> case y of {
+			Integer j -> case (+# i j) of {
+				x ->
+					let result = CON(Integer x) in
+						result
+			}
+		}
+	}
+)
+
+mul = FUN(x y ->
+	case x of {
+		Integer i -> case y of {
+			Integer j -> case (*# i j) of {
+				x ->
+					let result = CON(Integer x) in
+						result
+			}
+		}
+	}
+)
+
+div = FUN(x y ->
+	case x of {
+		Integer i -> case y of {
+			Integer j -> case (/# i j) of {
+				x ->
+					let result = CON(Integer x) in
+						result
+			}
+		}
+	}
+)

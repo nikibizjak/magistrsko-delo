@@ -1,0 +1,340 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <title>
+            Machine state 41
+        </title>
+    </head>
+    <body>
+        <h1>
+            Machine state 41
+        </h1>
+        <a href="step40.html">
+            Previous
+        </a>
+        <a href="step42.html">
+            Next
+        </a>
+        <h2>
+            Expression
+        </h2>
+        <code>
+            case multiply i j of {x -&gt; let result = CON(Integer x) in result}
+        </code>
+        <h2>
+            Environment
+        </h2>
+        <table class="environment">
+            <tbody>
+                <tr>
+                    <td>
+                        i
+                    </td>
+                    <td>
+                        <code>
+                            6
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        j
+                    </td>
+                    <td>
+                        <code>
+                            2
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        x
+                    </td>
+                    <td>
+                        <code>
+                            0x0005
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        y
+                    </td>
+                    <td>
+                        <code>
+                            0x0004
+                        </code>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>
+            Stack
+        </h2>
+        <table class="stack">
+            <thead>
+                <tr>
+                    <th>
+                        Frame
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <code>
+                            Update 0x0007
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            case . of Integer j -&gt; case add i j of {x -&gt; let result = CON(Integer x) in result} {&quot;i&quot; -&gt; 4}
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            Update 0x0009
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            Update 0x0006
+                        </code>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>
+            Heap
+        </h2>
+        <table class="heap">
+            <thead>
+                <tr>
+                    <th>
+                        Address
+                    </th>
+                    <th>
+                        Object
+                    </th>
+                    <th>
+                        Closure
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <code>
+                            0x0000
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            FUN(x y -&gt; case x of {Integer i -&gt; case y of {Integer j -&gt; case divide i j of {x -&gt; let result = CON(Integer x) in result}}})
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0001
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            FUN(x y -&gt; case x of {Integer i -&gt; case y of {Integer j -&gt; case multiply i j of {x -&gt; let result = CON(Integer x) in result}}})
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0002
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            FUN(x y -&gt; case x of {Integer i -&gt; case y of {Integer j -&gt; case add i j of {x -&gt; let result = CON(Integer x) in result}}})
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0003
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            CON(Integer 8)
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0004
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            CON(Integer 2)
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0005
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            CON(Integer 6)
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0006
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            BLACKHOLE
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0007
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            BLACKHOLE
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0008
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            INDIRECTION 0x000a
+                        </code>
+                    </td>
+                    <td>
+                        
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x0009
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            BLACKHOLE
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <code>
+                            0x000a
+                        </code>
+                    </td>
+                    <td>
+                        <code>
+                            CON(Integer x)
+                        </code>
+                    </td>
+                    <td>
+                        <table class="environment">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        x
+                                    </td>
+                                    <td>
+                                        <code>
+                                            4
+                                        </code>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</html>
