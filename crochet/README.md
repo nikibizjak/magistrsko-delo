@@ -1,32 +1,29 @@
-# Prevajalnik `crochet`
+# Interpreter `crochet`
 
-## Uporaba
+## Usage
+
+```
+Crochet - an interpreter for the STG language
+
+Usage: crochet [--debug-interpreter] [--debug-directory DIRECTORY] INPUT
+
+  Run the STG interpreter.
+
+Available options:
+  --debug-interpreter      If set, output each evaluation step to the screen.
+  --debug-directory DIRECTORY
+                           If set, output each evaluation step to a file
+                           'step{index}.html' inside of the DIRECTORY folder.
+  INPUT                    STG program input file that will be executed.
+  -h,--help                Show this help text
+```
+
+### Usage example
 
 ```bash
-cabal run crochet examples/map.wool
+cabal run crochet -- ./examples/map/map.wool --debug-directory ./examples/map/map_steps/
 ```
 
-## Primeri
+### Examples
 
-### Funkcija map
-
-Implementacija funkcije `map` vzeta neposredno iz originalnega članka z implementacijo STG stroja[^1].
-
-```stg
-nil = CON(Nil)
-
-map = FUN(f xs ->
-    case xs of
-    | Nil -> nil
-    | Cons y ys ->
-        let h = THUNK(f y)
-            t = THUNK(map f ys)
-            r = CON(Cons h t)
-        in
-            r
-)
-```
-
-## Literatura
-
-[^1]: S. Marlow, S. P. Jones, **Making a fast curry: push/enter vs. eval/apply for higher-order languages**, ACM SIGPLAN Notices 39 (9) (2004) 4–15.
+You can find the examples in the [`examples`](examples) directory.
