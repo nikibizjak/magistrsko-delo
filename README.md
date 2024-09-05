@@ -8,7 +8,6 @@ Cilj magistrske naloge je pripraviti simulator STG stroja, nato pa spremeniti ST
 | --- | --- |
 | [`crochet`](crochet/) | Prevajalnik za len funkcijski programski jezik STG, ki namesto avtomatskega čistilca pomnilnika uporablja princip lastništva. |
 | [`magistrsko_delo`](magistrsko_delo/) | Magistrsko delo v pdf obliki in vse LaTeX datoteke, potrebne za generiranje le-tega. |
-| [`syntax_highlighting`](syntax_highlighting/) | Fork knjižnice [Pygments](https://pygments.org/), ki omogoča označevanje sintakse STG jezika. |
-| [`literatura`](literatura/) | Uporabna literatura. |
-| [`dispozicija`](dispozicija/) | Prijava teme za magistrsko delo. |
 | [`vmesno_porocilo`](vmesno_porocilo/) | Vmesno poročilo o poteku magistrske naloge. |
+| [`dispozicija`](dispozicija/) | Prijava teme za magistrsko delo. |
+| [`literatura`](literatura/) | Uporabna literatura. |
