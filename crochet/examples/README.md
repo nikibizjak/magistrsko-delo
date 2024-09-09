@@ -14,3 +14,4 @@ cabal run crochet -- ./examples/arithmetic_operations/arithmetic_operations.wool
 | Primer | Kratek opis |
 | ------ | ----------- |
 | [`arithmetic_operations/arithmetic_operations.wool`](./arithmetic_operations/arithmetic_operations.wool) | Izračuna vrednost izraza `(6 * 2) + (8 / 2)` |
+| [`map/map.wool`](./map/map.wool) | Izračuna vrednost `last (map ((+) 1) [3, 2, 1])` |
