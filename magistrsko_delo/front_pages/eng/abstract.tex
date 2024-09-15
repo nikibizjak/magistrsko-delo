@@ -9,7 +9,11 @@
 \noindent\textbf{Title:} \ttitleEn
 \bigskip
 
-This sample document presents an approach to typesetting your BSc thesis using \LaTeX. A proper abstract should contain around 100 words which makes this one way too short. A good abstract contains: (1) a short description of the tackled problem, (2) a short description of your approach to solving the problem, and (3) (the most successful) result or contribution in your thesis.
+% This sample document presents an approach to typesetting your BSc thesis using \LaTeX. A proper abstract should contain around 100 words which makes this one way too short. A good abstract contains: (1) a short description of the tackled problem, (2) a short description of your approach to solving the problem, and (3) (the most successful) result or contribution in your thesis.
+
+Despite the introduction of memory hierarchy, memory still remains the slowest part of computer architecture, making its management crucial for program execution speed. In recent years, the Rust programming language has been gaining prominence, particularly in the field of systems programming, due to its use of ownership and borrowing models in memory management. This master thesis explores whether the ownership model can be implemented in the lazy functional programming language STG, which is used in the compilation of Haskell. We implement a simulator for the STG machine with ownership analysis. However, we find that this approach severely restricts the language’s functionality, as it prevents object sharing. We investigate two solutions: deep cloning of objects and a borrowing model. The former has previously been proven to be very time- and space-consuming, while the latter, as we demonstrate, cannot be implemented without additional information about object evaluation or introducing some form of eager evaluation.
+
+% Ultimately, we conclude that implementing these analyses in a lazy programming language is not feasible without introducing some form of eager evaluation.
 
 \subsection*{Keywords}
 \textit{\tkeywordsEn}

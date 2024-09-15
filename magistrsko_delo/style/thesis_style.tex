@@ -26,6 +26,10 @@
 \usepackage{algorithmic}
 \floatname{algorithm}{\footnotesize Algorithm} % SLO: napis "Algoritem #" v krepkem tisku
 											   % ENG: write "Algorithm #" caption in bold
+\floatstyle{plain}
+\newfloat{primer}{ht}{lop}[chapter]
+\floatname{primer}{Primer}
+\captionsetup[primer]{labelfont=bf}
 % SLO: poveže reference slik/tabel in slike/tabele znotraj dokumenta
 % ENG: links image/table references with the images/tables within the document
 \usepackage[pdfa]{hyperref}
@@ -66,6 +70,7 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows}
 \usetikzlibrary{tikzmark}
+\usetikzlibrary{calc}
 \usetikzlibrary{positioning,arrows.meta}
 \usetikzlibrary{decorations.pathreplacing}
 % Za shranjevanje tikz slik v zunanje datoteke.
@@ -170,6 +175,27 @@
 	#1
 }
 
+\newtcblisting{code-box-breathe}[3][]{%
+	listing engine=minted,
+	minted options={
+		linenos,
+		breaklines,
+		fontsize=\footnotesize,
+		tabsize=4,
+	},
+	minted language=#2,
+	listing only,
+	colback=white,
+	colframe=lightgray,
+	enhanced,
+	boxrule=0.5pt,
+	sharp corners,
+	left=2em,
+    bottom=1.4em,
+	overlay={\node[anchor=south east, font=\small, outer sep=0pt,xshift=-3em,yshift=-0.5em,fill=white,inner xsep=0.75em] at (frame.south east) {#3};},
+	#1
+}
+
 % Forall symbol
 \DeclareUnicodeCharacter{2200}{$\forall$}
 
@@ -230,7 +256,7 @@
 
 \newcommand{\BibTeX}{{\sc Bib}\TeX}
 
-\newcommand{\komentar}[1]{\textcolor{red}{#1}}
+% \newcommand{\komentar}[1]{\textcolor{red}{#1}}
 
 \newcommand{\infer}[4][]{
 	\frac{#2}{#3 \enspace \Rightarrow \enspace #4}
@@ -261,5 +287,3 @@
 
 \newcommand{\var}[1]{\textit{#1}}
 \newcommand{\object}[1]{\textsc{\MakeLowercase{#1}}}
-% \newcommand{\let}[0]{\texttt{let}}
-\newcommand{\case}{\texttt{case}}

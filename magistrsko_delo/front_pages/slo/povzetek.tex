@@ -9,7 +9,13 @@
 \noindent\textbf{Naslov:} \ttitle
 \bigskip
 
-V vzorcu je predstavljen postopek priprave magistrskega dela z uporabo okolja \LaTeX. Vaš povzetek mora sicer vsebovati približno 100 besed, ta tukaj je odločno prekratek. Dober povzetek vključuje: (1) kratek opis obravnavanega problema, (2) kratek opis vašega pristopa za reševanje tega problema in (3) (najbolj uspešen) rezultat ali prispevek magistrske naloge.
+Pomnilnik je kljub uvedbi pomnilniške hierarhije še vedno najpočasnejši del računalniške arhitekture, zato je upravljanje z njim ključnega pomena pri hitrosti izvajanja programov. V zadnjih letih se predvsem na področju sistemskega programiranja vedno bolj uveljavlja programski jezik Rust, ki za čiščenje pomnilnika uporablja princip lastništva in izposoje, s katerima zna med prevajanjem zagotoviti predvidljivo in učinkovito sproščanje pomnilnika. V obsegu magistrskega dela nas zanima, ali je mogoče princip lastništva implementirati v len funkcijski programski jezik STG, ki se uporablja pri prevajanju jezika Haskell. V magistrskem delu implementiramo simulator STG stroja, v katerega dodamo analizo lastništva. Pri tem se izkaže, da s tem zelo omejimo delovanje jezika, saj onemogočimo deljenje objektov. Predstavimo dve rešitvi: globoko kloniranje objektov, za katerega se izkaže, da je zelo časovno in prostorsko potratno, in model lastništva, ki zahteva analizo premikov in izposoj. A izkaže se, da analize izposoj ni mogoče implementirati brez uvedbe bodisi dodatnih informacij o izračunanosti objektov bodisi neke oblike neučakanosti v len programski jezik.
+
+% in izposoje, pri katerem ugotovimo, da brez dodajanja dodatnih informacij o izračunanosti objektov analize izposoj ne moremo implementirati.
+
+% Izkaže se, da analize izposoj v len programski jezik brez uvedbe neke oblike neučakanosti ne moremo implementirati.
+
+% V vzorcu je predstavljen postopek priprave magistrskega dela z uporabo okolja \LaTeX. Vaš povzetek mora sicer vsebovati približno 100 besed, ta tukaj je odločno prekratek. Dober povzetek vključuje: (1) kratek opis obravnavanega problema, (2) kratek opis vašega pristopa za reševanje tega problema in (3) (najbolj uspešen) rezultat ali prispevek magistrske naloge.
 
 \subsection*{Ključne besede}
 \textit{\tkeywords}

@@ -1,0 +1,639 @@
+\section{Primer}
+\label{sec:stg-primer}
+
+% Uvod v poglavje + opis kaj smo točno naredili
+V poglavju \ref{ch:stg} smo podrobno opisali strukturo jezika STG ter njegovo operacijsko semantiko, ki določa pravila izvajanja programov v jeziku STG. Poleg teoretične analize smo v obsegu naloge razvili tudi simulator, ki omogoča izvajanje programov, napisanih v jeziku STG. Namen simulatorja je ponazoritev postopka redukcije grafov, na katerem pogosto temelji izvajanje programov v lenih funkcijskih programskih. V tem poglavju bomo z namenom boljšega razumevanja abstraktnega STG stroja predstavili konkreten primer.
+
+\begin{primer}[htbp]
+\centering
+\begin{code-box}{haskell}{STG jezik \cmark}
+main = THUNK(
+	let a = THUNK(mul six two) in
+	let b = THUNK(div eight two) in
+	let r = THUNK(add b a) in
+		r
+)
+
+-- Uokvirjene celoštevilske vrednosti
+six = CON(Integer 6)
+two = CON(Integer 2)
+eight = CON(Integer 8)
+
+-- Aritmetične operacije - najprej razpakirajo obe celoštevilski vrednosti in nad njima izvedejo ustrezno primitivno operacijo (+#, *# ali /#)
+add = FUN(x y ->
+	case x of {
+		Integer i -> case y of {
+			Integer j -> case (+# i j) of {
+				x -> let result = CON(Integer x) in
+                         result
+			}
+		}
+	}
+)
+mul = FUN(x y -> ...)
+div = FUN(x y -> ...)
+\end{code-box}
+\caption{STG program, ki izračuna vrednost izraza $(6 \cdot 2) + (8 \div 2)$}
+\label{pr:glavni-primer}
+\end{primer}
+
+% Zakaj izgleda program tako zakompliciran
+Kot primer smo izbrali program \ref{pr:glavni-primer}, ki izračuna vrednost izraza $(6 \cdot 2) + (8 \div 2)$. Čeprav se zdi program na prvi pogled relativno preprost, simulator za njegov izračun potrebuje kar 58 korakov redukcije. Ta navidezna neučinkovitost ni posledica pomanjkljivosti v implementaciji simulatorja, temveč odraža praktično naravo izvajanja lenega izračuna s pomočjo redukcije grafa.
+
+Izračun programa v jeziku STG se vedno prične pri objektu, na katerega kaže spremenljivka \var{main}.
+
+Aritmetične operacije \var{add}, \var{mul} in \var{div} kot vhodna argumenta prejmejo uokvirjeni (angl. boxed) vrednosti, jih s pomočjo \texttt{case} izraza najprej razpakirajo (angl. unbox), nato pa nad njima izvedejo ustrezno primitivno operacijo (tj. eno izmed operacij \texttt{+\#}, \texttt{*\#} oziroma \texttt{/\#}), ki izračuna neokvirjeno vrednost \var{x}, ki jo s pomočjo \texttt{let} izraza ponovno uokvirimo v podatkovni tip s pomočjo konstruktorja \texttt{Integer}. Zaradi preglednosti je prikazana celotna implementacija le ene izmed aritmetičnih operacij, tj. funkcije \var{add}, funkciji \var{mul} in \var{div} sta identični, le da izvedeta drugačni primitivni operaciji.
+
+Vredno je še omeniti, da implementirane aritmetične operacije najprej do konca izračunajo vrednost \emph{levega} argumenta, šele nato pričnejo z ra\-ču\-na\-njem \emph{desnega}. Spremenljivke \var{two}, \var{six} in \var{eight} hranijo uokvirjena cela števila.
+
+Slike \ref{fig:korak1} - \ref{fig:korak58} prikazujejo najpomembnejše vmesne korake\footnote{Celoten program in vsi koraki simulacije z implementiranim simulatorjem stroja STG so na voljo \href{https://github.com/nikibizjak/magistrsko-delo/tree/502fb3c305e9b0360b079c28593e1e90e341ecd8/crochet/examples/arithmetic_operations}{\textbf{tukaj}}.} redukcije grafa programa \ref{pr:glavni-primer} z implementiranim simulatorjem STG jezika. Vsak korak simulacije je sestavljen iz:
+\begin{itemize}
+    \itemsep 0em
+    \item \textit{kopice} (levo), ki vsebuje STG objekte, definirane v poglavju \ref{sec:stg-definicija}. Na levi strani kopice so prikazani pomnilniški naslovi, ki jih simulator dodeli objektom, na desni pa so, zavoljo lažjega razumevanja, prikazana še imena spremenljivk, v katerih so objekti shranjeni. V implementiranem simulatorju podatkov o imenih spremenljivk na kopici ne hranimo.
+    \item \textit{sklada} (desno), ki vsebuje kontinuacije, definirane v poglavju \ref{sec:stg-operacijska-semantika}. Vrh sklada je označen s črtkano črto, kontinuacije pa na sklad dodajamo od zgoraj navzdol.
+    \item \textit{izraza} (spodaj), ki ga simulator STG jezika v danem koraku računa. Če izraz vsebuje spremenljivke, so v oklepaju podane še njihove vrednosti v trenutnem okolju, ki so lahko bodisi celoštevilske vrednosti bodisi pomnilniški naslovi (npr. \texttt{0xa}).
+\end{itemize}
+
+\subsubsection{Opis izvajanja programa}
+
+Slika \ref{fig:korak1} prikazuje začetno stanje STG stroja pri izvajanju programa \ref{pr:glavni-primer}. Na kopici so ustvarjeni objekti za globalne spremenljivke, sklad pa je prazen. V tem koraku se prične izračun zakasnitve \var{main}, pri čemer se na kopici zakasnitev \var{main} zamenja z objektom \object{blackhole}, na sklad nadaljevanj doda posodobitveni okvir in prične z izračunom izraza v zakasnitvi.
+
+Slika \ref{fig:korak5} prikazuje 5. korak izračuna, pri katerem so na ovojnici že ustvarjene zakasnitve \var{a}, \var{b} in \var{r}. Simulator prične z izračunom zakasnitve \var{r} (tj. izraza \texttt{add b a}). Na sklad se doda posodobitveni okvir, zakasnitev \var{r} na kopici zamenja z \object{blackhole} in prične z izračunom izraza v zakasnitvi (slika \ref{fig:korak7}).
+
+Telo zakasnitve \var{r} vsebuje aplikacijo funkcije \var{add} na argumenta \var{a} in \var{b}, zato se prične izračun telesa funkcije \var{add} (slika \ref{fig:korak8}) z argumentoma \var{a} in \var{b}.
+
+V telesu funkcije se s \texttt{case} izrazom sproži izračun argumenta \var{x}, pri tem pa se na kopico doda še \texttt{case} kontinuacija (glej sliko \ref{fig:korak9}), ki se bo izvedla, kadar se bo zakasnitev \var{x} do konca izračunala.
+
+Argument \var{x} vsebuje zakasnitev, ki izračuna vrednost \texttt{div eight two} (slika \ref{fig:korak11}). V nadaljevanju se primitivni vrednosti argumentov \var{eight} in \var{two} razpakirata iz konstruktorjev \texttt{Integer} v spremenljivki \var{i} in \var{j}. V koraku 20 (slika \ref{fig:korak20}) se s pomočjo primitivne operacije \texttt{/\#} izračuna rezultat operacije $8 \div 2$, ki se v nadaljevanju ponovno zapakira s konstruktorjem \texttt{Integer} na kopici (slika \ref{fig:korak26}).
+
+Slika \ref{fig:korak27} prikazuje posodobitev zakasnitve \var{b} na kopici s preusmeritvijo \object{indirection}, ki kaže na objekt \texttt{Integer 4} na kopici. V naslednjem koraku (slika \ref{fig:korak28}) je na vrhu sklada \texttt{case} kontinuacija, ki na podlagi rezultata v konstruktorju \var{result} v spremenljivko \var{i} razpakira izračunano vrednost in izvede telo ustrezne algebraične alternative.
+
+Simulator nadaljuje z izračunom vrednosti zakasnitve \var{a} (slika \ref{fig:korak32}, ki izračuna vrednost izraza \texttt{mul six two}. Po izračunu se vrednost spremenljivke \var{a} na kopici prepiše s preusmeritvijo na izračunan rezultat (slika \ref{fig:korak48}).
+
+Spremenljivki \var{a} in \var{b} sta sedaj do konca izračunani, zato simulator prične z izračunom izraza \texttt{add b a}. Kadar se izraz do konca izračuna, se vrednost spremenljivke \var{r} posodobi s preusmeritvijo na rezultat \texttt{CON(Integer 16)} (slika \ref{fig:korak57}).
+
+Slika \ref{fig:korak58} prikazuje zadnji korak simulacije, pri katerem se vrednost spremenljivke \var{main} na skladu prepiše s preusmeritvijo na izračunan rezultat.
+
+% Na levi strani je prikazana kopica z pomnilniškimi naslovi in human readable imeni spremenljivk, za boljše razumevanje. Na desni strani pa je prikazan sklad kontinuacij, ki raste navzdol. Pod skladom in kopico je še izraz, ki ga simulator v danem trenutku izvaja.
+
+% Kot primer izvajanja programa na implementiranem simulatorju bomo vzeli naslednji STG program ki izračuna rezultat izraza $(6 \cdot 2) + (8 \div 2)$. Na videz preprost program za izračun potrebuje celih 58 korakov redukcije.
+
+% https://mrtipson.github.io/webstg/?program=eJy1UktOwzAQXcenGCmbpKWqxAIhoSIhJARCCht6gGk9lMnHjhw3pEU9AofgLnAv7ISkatetFyPPvGe%2F5xlLtAhPytKKDCDM9nshCmTlKq%2BP8%2BQ5EkFOtmV0ebHOoeIG7IeOgVUHLwZYcg3Eq3d7SDADAaV0dOygwIhYiMkE5jqr2aSkCJaU699vSzXnVUZQG5JKV5aFV53B%2FUsS9V6vYuFUjoqXsegMHJavO6E7w7Ygyz9fTkqXZHDJKXkkwbQ0lILBbYkZG0w16MWRH977cQ8AhRJUygUCb2uS5I6sK2toqzSUhgu2XLttr6MhGocXMAoBc4ZpGAvfjRk8zJOogQ1MbkWwxIqgAf0Gn64%2FvXt2GLTQpocGLB0whnHo0p4QNO2NfrUzoGqdH7el%2BR%2BEXx3hxmc7H33Y%2BQH5mZ%2FS5egsLv3XO6XL6Rlc%2FgF4mP3e&limit=48&step=1
+
+% ========================================================
+% SIMULACIJA PROGRAMA
+% ========================================================
+
+% KORAK 1
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0/0x0/div/FUN(x y -> \ldots),
+    1/0x1/mul/FUN(x y -> \ldots),
+    2/0x2/add/FUN(x y -> \ldots),
+    3/0x3/eight/CON(Integer 8),
+    4/0x4/two/CON(Integer 2),
+    5/0x5/six/CON(Integer 6),
+    6/0x6/main/THUNK(let a = \ldots)
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+\draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+%\foreach \y/\content in {
+%   0/Update 0x6
+%} {
+%    \node[box] at (6.9,{-\y*0.7}) {\content};
+%}
+
+\node[below=0.5cm of current bounding box.south, font=\large\ttfamily\bfseries] {main \textcolor{gray}{(0x6)}};
+
+\end{tikzpicture}
+\caption{Začetno stanje pred izvajanjem programa}
+\label{fig:korak1}
+\end{figure}
+
+% KORAK 5
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x6/main/\textbf{BLACKHOLE},
+    2/0x7/a/\textbf{THUNK(mul six two)},
+    3/0x8/b/\textbf{THUNK(div eight two)},
+    4/0x9/r/\textbf{THUNK(add b a)}
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\ttfamily\bfseries] {r \textcolor{gray}{(0x9)}};
+
+\end{tikzpicture}
+\caption{Ustvarjeni objekti \var{a}, \var{b} in \var{r} (korak 5)}
+\label{fig:korak5}
+\end{figure}
+
+% KORAK 7
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x2/add/FUN(x y -> \ldots),
+    2///\dots,
+    3/0x6/main/BLACKHOLE,
+    4/0x7/a/THUNK(mul six two),
+    5/0x8/b/THUNK(div eight two),
+    6/0x9/r/\textbf{BLACKHOLE}
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/\textbf{Update 0x9}
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\ttfamily\bfseries] {add \textcolor{gray}{(0x2)} b \textcolor{gray}{(0x8)} a \textcolor{gray}{(0x7)}};
+
+\end{tikzpicture}
+\caption{Začetek izračuna zakasnitve \var{r} (korak 7)}
+\label{fig:korak7}
+\end{figure}
+
+% KORAK 8
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x8/b/THUNK(div eight two)
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries] {\texttt{case x \textcolor{gray}{(0x8)} of \{ Integer i -> ... \}}};
+
+\end{tikzpicture}
+\caption{Začetek izračuna telesa funkcije \var{add} (korak 8)}
+\label{fig:korak8}
+\end{figure}
+
+% KORAK 9
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x8/b/THUNK(div eight two)
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/\textbf{case $\bullet$ of \dots}
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries] {\texttt{x \textcolor{gray}{(0x8)}}};
+
+\end{tikzpicture}
+\caption{Začetek izračuna vrednosti argumenta \var{x} (korak 9)}
+\label{fig:korak9}
+\end{figure}
+
+% KORAK 11
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0/0x0/div/FUN(x y -> \ldots),
+    1///\dots,
+    2/0x6/main/BLACKHOLE,
+    3/0x7/a/THUNK(mul six two),
+    4/0x8/b/\textbf{BLACKHOLE},
+    5/0x9/r/BLACKHOLE
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/case $\bullet$ of \dots,
+   3/\textbf{Update 0x8}
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries] {\texttt{div \textcolor{gray}{(0x0)} eight \textcolor{gray}{(0x3)} two \textcolor{gray}{(0x4)}}};
+
+\end{tikzpicture}
+\caption{Računanje argumenta \var{x} (izraz \texttt{div eight two}) (korak 11)}
+\label{fig:korak11}
+\end{figure}
+
+% KORAK 20
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0/0x0/div/FUN(x y -> \ldots),
+    1///\dots,
+    2/0x9/r/BLACKHOLE
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/case $\bullet$ of \dots,
+   3/Update 0x8
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries] {\texttt{case (/\# i \textcolor{gray}{(8)} j \textcolor{gray}{(2)}) of \{ x -> \dots \} }};
+
+\end{tikzpicture}
+\caption{Izračun primitivne operacije \texttt{/\#} (korak 20)}
+\label{fig:korak20}
+\end{figure}
+
+% KORAK 26
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x8/b/\textbf{BLACKHOLE},
+    2///\dots,
+    3/0xa/result/\textbf{CON(Integer 4)}
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/case $\bullet$ of \dots,
+   3/Update 0x8
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries] {\texttt{result \textcolor{gray}{(0xa)}}};
+
+\end{tikzpicture}
+\caption{Do konca izračunan rezultat funkcije \var{div} (korak 26)}
+\label{fig:korak26}
+\end{figure}
+
+% KORAK 27
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x8/b/\textbf{INDIRECTION(0xa)},
+    2///\dots,
+    3/0xa/result/CON(Integer 4)
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/case $\bullet$ of \dots
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries] {\texttt{result \textcolor{gray}{(0xa)}}};
+
+\end{tikzpicture}
+\caption{Posodobitev zakasnitve \var{b} na kopici (korak 27)}
+\label{fig:korak27}
+\end{figure}
+
+% KORAK 28
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0/0x0/div/FUN(x y -> \ldots),
+    1///\dots,
+    2/0xa/result/CON(Integer 4)
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries, text width=12cm, align=center] {\texttt{case result \textcolor{gray}{(0xa)} of \{ Integer i \textcolor{gray}{(4)} -> ... \} }};
+
+\end{tikzpicture}
+\caption{Kontinuacija izračuna izraza \texttt{add b a}, pri kateri je vrednost argumenta \var{b} že do konca izračunana (korak 28)}
+\label{fig:korak28}
+\end{figure}
+
+% KORAK 32
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    % 0/0x0/div/FUN(x y -> \ldots),
+    % 1///\dots,
+    % 2/0xa/result/CON(Integer 4)
+    0///\dots,
+    1/0x2/mul/FUN(x y -> \ldots),
+    2///\dots,
+    3/0x6/main/BLACKHOLE,
+    4/0x7/a/\textbf{BLACKHOLE},
+    5/0x8/b/INDIRECTION(0xa),
+    6/0x9/r/BLACKHOLE
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/\textbf{case $\bullet$ of \dots},
+   3/\textbf{Update 0x0007}
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries, text width=12cm, align=center] {\texttt{mul \textcolor{gray}{(0xa)} six  \textcolor{gray}{(0x5)} two \textcolor{gray}{(0x4)}}};
+
+\end{tikzpicture}
+\caption{Začetek izračuna zakasnitve \var{a} (korak 32)}
+\label{fig:korak32}
+\end{figure}
+
+% KORAK 48
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x6/main/BLACKHOLE,
+    2/0x7/a/\textbf{INDIRECTION(0xb)},
+    3/0x8/b/INDIRECTION(0xa),
+    4/0x9/r/BLACKHOLE,
+    5/0xa//CON(Integer 4),
+    6/0xb/result/\textbf{CON(Integer 12)}
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6,
+   1/Update 0x9,
+   2/case $\bullet$ of \dots
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries, text width=12cm, align=center] {\texttt{result \textcolor{gray}{(0xb)}}};
+
+\end{tikzpicture}
+\caption{Dokončno izračunana vrednost zakasnitve \var{a} in posodobitev v pomnilniku (korak 48)}
+\label{fig:korak48}
+\end{figure}
+
+% KORAK 57
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x6/main/BLACKHOLE,
+    2///\dots,
+    3/0x9/r/\textbf{INDIRECTION(0xc)},
+    4/0xa//CON(Integer 4),
+    5/0xb//CON(Integer 12),
+    6/0xc/result/\textbf{CON(Integer 16)}
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+% \draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+\foreach \y/\content in {
+   0/Update 0x6
+} {
+    \node[box] at (6.9,{-\y*0.7}) {\content};
+}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries, text width=12cm, align=center] {\texttt{result \textcolor{gray}{(0xc)}}};
+
+\end{tikzpicture}
+\caption{Dokončno izračunana vrednost zakasnitve \var{r} in posodobitev v pomnilniku (korak 57)}
+\label{fig:korak57}
+\end{figure}
+
+% KORAK 58
+\begin{figure}[ht]
+\begin{tikzpicture}[
+    box/.style={draw, minimum width=4.5cm, minimum height=0.7cm, text width=4.4cm, align=left, anchor=west, font=\ttfamily},
+    label/.style={anchor=east, font=\ttfamily},
+    variable-name/.style={anchor=west, font=\footnotesize\ttfamily},
+]
+
+% HEAP
+\foreach \y/\addr/\v/\content in {
+    0///\dots,
+    1/0x6/main/\textbf{INDIRECTION(0xc)},
+    2///\dots,
+    3/0xc/result/\textbf{CON(Integer 16)}
+} {
+    \node[label] at (-0.2,{-\y*0.7}) {\addr};
+    \node[box] at (0,{-\y*0.7}) {\content};
+    \node[variable-name] at ({4.5+0.2},{-\y*0.7}) {\v};
+}
+
+% Stack top line
+\draw[dashed] (6.9,{0.7*0.5}) -- ({6.9 + 4.5},{0.7*0.5});
+
+% STACK
+%\foreach \y/\content in {
+%   0/Update 0x6
+%} {
+%    \node[box] at (6.9,{-\y*0.7}) {\content};
+%}
+
+\node[below=0.5cm of current bounding box.south, font=\large\bfseries, text width=12cm, align=center] {\texttt{result \textcolor{gray}{(0xc)}}};
+
+\end{tikzpicture}
+\caption{Dokončno izračunana vrednost zakasnitve \var{main} in posodobitev objekta na kopici (korak 58)}
+\label{fig:korak58}
+\end{figure}
